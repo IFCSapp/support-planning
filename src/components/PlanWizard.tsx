@@ -173,7 +173,7 @@ export default function PlanWizard({ dictionary, editId, onNavigate, onCopied }:
       {step === 4 && activeBlock && (
         <StepVocabularySelect dictionary={dictionary} blocks={draft.blocks} activeBlock={activeBlock} setActiveBlockId={setActiveBlockId} setSelection={setSelection} updateBlock={updateBlock} duplicateBlock={duplicateBlock} removeBlock={removeBlock} onCopied={onCopied} />
       )}
-      {step === 5 && <ConfirmStep blocks={draft.blocks} updateBlock={updateBlock} onCopied={onCopied} />}
+      {step === 5 && <ConfirmStep blocks={draft.blocks} onCopied={onCopied} />}
       {step === 6 && <OutputStep draft={draft} complete={complete} onCopied={onCopied} />}
 
       <div className="wizard-actions no-print">
@@ -379,24 +379,27 @@ function ConnectedPreview({ block, updateBlock, onCopied }: { block: PlanBlock; 
         <p>{block.actionText || "場面と行動を選ぶと文が入ります。"}</p>
         <p>{block.staffSupportText || "職員支援を選ぶと文が入ります。"}</p>
       </div>
-      <label>
-        文章を調整
-        <textarea
-          className="large-textarea"
-          value={[block.directionText, block.actionText, block.staffSupportText].filter(Boolean).join("\n\n")}
-          onChange={(event) => {
-            const [directionText = "", actionText = "", staffSupportText = ""] = event.target.value.split(/\n\s*\n/);
-            updateBlock(block.id, { directionText, actionText, staffSupportText });
-          }}
-        />
-      </label>
+      <div className="adjust-fields" aria-label="文章を調整">
+        <label>
+          方向性文を調整
+          <textarea value={block.directionText} onChange={(event) => updateBlock(block.id, { directionText: event.target.value })} />
+        </label>
+        <label>
+          行動文を調整
+          <textarea value={block.actionText} onChange={(event) => updateBlock(block.id, { actionText: event.target.value })} />
+        </label>
+        <label>
+          職員支援文を調整
+          <textarea value={block.staffSupportText} onChange={(event) => updateBlock(block.id, { staffSupportText: event.target.value })} />
+        </label>
+      </div>
       <QualityWarnings warnings={block.qualityWarnings} />
       <CopyButtons block={block} onCopied={onCopied} />
     </section>
   );
 }
 
-function ConfirmStep({ blocks, updateBlock, onCopied }: { blocks: PlanBlock[]; updateBlock: (id: string, patch: Partial<PlanBlock>) => void; onCopied: () => void }) {
+function ConfirmStep({ blocks, onCopied }: { blocks: PlanBlock[]; onCopied: () => void }) {
   if (!blocks.length) {
     return <div className="panel">支援領域を選択すると、ここに3文確認が表示されます。</div>;
   }
@@ -405,7 +408,7 @@ function ConfirmStep({ blocks, updateBlock, onCopied }: { blocks: PlanBlock[]; u
       {blocks.map((block, index) => (
         <div key={block.id}>
           <h2>計画ブロック {index + 1}</h2>
-          <PlanPreview block={block} onChange={(patch) => updateBlock(block.id, patch)} onCopied={onCopied} />
+          <PlanPreview block={block} onCopied={onCopied} />
         </div>
       ))}
     </div>

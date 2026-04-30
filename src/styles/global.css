@@ -223,6 +223,15 @@ textarea {
   min-height: 180px;
 }
 
+.adjust-fields {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.adjust-fields textarea {
+  min-height: 96px;
+}
+
 .choice {
   display: flex;
   align-items: flex-start;
