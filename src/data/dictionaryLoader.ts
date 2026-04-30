@@ -134,7 +134,7 @@ export function normalizeDictionary(raw: RawRecord): SupportPlanDictionary {
 }
 
 function normalizeTriggers(raw: RawRecord): TriggerEntry[] {
-  return asArray<RawRecord>(raw.triggers ?? raw.antecedents).map((entry) => ({
+  return uniqueById([...asArray<RawRecord>(raw.antecedents), ...asArray<RawRecord>(raw.triggers)]).map((entry) => ({
     id: asString(entry.id),
     category: asString(entry.category),
     label: asString(entry.label || entry.text),
@@ -194,4 +194,14 @@ function labelsToIds<T extends { id: string; label: string }>(labels: string[], 
 
 function uniqueStrings(values: string[]): string[] {
   return Array.from(new Set(values.filter(Boolean)));
+}
+
+function uniqueById<T extends RawRecord>(items: T[]): T[] {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    const id = asString(item.id);
+    if (!id || seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
 }
