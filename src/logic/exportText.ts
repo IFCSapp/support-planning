@@ -18,7 +18,7 @@ export function planFullText(plan: SupportPlanDraft): string {
     "【本人の希望】",
     hopes,
     "",
-    ...plan.blocks.map((block, index) => `【支援計画 ${index + 1}】\n${blockText(block)}`),
+    ...plan.blocks.map((block, index) => `【支援計画文案 ${index + 1}】\n${blockText(block)}`),
     "",
     "【面談メモ】",
     plan.interviewMemo || "",

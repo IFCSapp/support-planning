@@ -16,7 +16,7 @@ export default function CopyButtons({ block, plan, onCopied }: Props) {
   return (
     <div className="button-row no-print">
       {block && <button onClick={() => copy(blockText(block))}>文章をコピー</button>}
-      {plan && <button className="primary" onClick={() => copy(planFullText(plan))}>計画全文をコピー</button>}
+      {plan && <button className="primary" onClick={() => copy(planFullText(plan))}>文案全文をコピー</button>}
     </div>
   );
 }

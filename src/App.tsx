@@ -124,7 +124,7 @@ function SettingsPage({ dictionaryVersion, onNavigate }: { dictionaryVersion: st
       <div className="page button-row no-print">
         <button onClick={() => onNavigate("/")}>ホームへ戻る</button>
       </div>
-      <Settings dictionaryVersion={dictionaryVersion} onImported={() => undefined} />
+      <Settings dictionaryVersion={dictionaryVersion} onImported={() => undefined} onNavigate={onNavigate} />
     </>
   );
 }

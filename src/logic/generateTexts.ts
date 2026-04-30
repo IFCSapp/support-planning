@@ -7,14 +7,8 @@ export function ensureMashou(text: string, ending = "ましょう"): string {
   if (!trimmed) return "";
   const normalizedEnding = ending.trim().replace(/。$/, "") || "ましょう";
   if (trimmed.endsWith(normalizedEnding)) return trimmed;
-  if (normalizedEnding !== "ましょう") return `${trimmed}${normalizedEnding}`;
-  if (trimmed.endsWith("ましょう")) return trimmed;
   if (trimmed.endsWith("する")) return `${trimmed.slice(0, -2)}しましょう`;
-  if (trimmed.endsWith("進める")) return `${trimmed.slice(0, -2)}めましょう`;
-  if (trimmed.endsWith("取り組む")) return `${trimmed.slice(0, -2)}みましょう`;
-  if (trimmed.endsWith("整える")) return `${trimmed.slice(0, -2)}えましょう`;
-  if (trimmed.endsWith("続ける")) return `${trimmed.slice(0, -2)}けましょう`;
-  return `${trimmed}ましょう`;
+  return `${trimmed}${normalizedEnding}`;
 }
 
 export function toTryForm(label: string, teForm?: string, ending = "みましょう"): string {
@@ -23,15 +17,8 @@ export function toTryForm(label: string, teForm?: string, ending = "みましょ
   const text = label.trim().replace(/。$/, "");
   if (!text) return "";
   if (text.endsWith(normalizedEnding)) return text;
-  if (normalizedEnding !== "みましょう") return `${text}${normalizedEnding}`;
-  if (text.endsWith("してみましょう")) return text;
   if (text.endsWith("する")) return `${text.slice(0, -2)}してみましょう`;
-  if (text.endsWith("入れる")) return `${text.slice(0, -2)}れてみましょう`;
-  if (text.endsWith("選ぶ")) return `${text.slice(0, -2)}選んでみましょう`;
-  if (text.endsWith("書く")) return `${text.slice(0, -2)}書いてみましょう`;
-  if (text.endsWith("伝える")) return `${text.slice(0, -2)}伝えてみましょう`;
-  if (text.endsWith("確認する")) return `${text.slice(0, -2)}確認してみましょう`;
-  return `${text}してみましょう`;
+  return `${text}${normalizedEnding}`;
 }
 
 export function generateDirectionText(direction?: DirectionEntry): string {
