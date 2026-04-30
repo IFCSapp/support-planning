@@ -2,9 +2,12 @@ import type { ActionEntry, DirectionEntry, MonitoringEntry, StaffSupportEntry, S
 import type { PlanBlock } from "../types/plan";
 import { ensureJapanesePeriod } from "../utils/text";
 
-export function ensureMashou(text: string): string {
+export function ensureMashou(text: string, ending = "ましょう"): string {
   const trimmed = text.trim().replace(/。$/, "");
   if (!trimmed) return "";
+  const normalizedEnding = ending.trim().replace(/。$/, "") || "ましょう";
+  if (trimmed.endsWith(normalizedEnding)) return trimmed;
+  if (normalizedEnding !== "ましょう") return `${trimmed}${normalizedEnding}`;
   if (trimmed.endsWith("ましょう")) return trimmed;
   if (trimmed.endsWith("する")) return `${trimmed.slice(0, -2)}しましょう`;
   if (trimmed.endsWith("進める")) return `${trimmed.slice(0, -2)}めましょう`;
@@ -14,10 +17,13 @@ export function ensureMashou(text: string): string {
   return `${trimmed}ましょう`;
 }
 
-export function toTryForm(label: string, teForm?: string): string {
-  if (teForm) return `${teForm.replace(/。$/, "")}みましょう`;
+export function toTryForm(label: string, teForm?: string, ending = "みましょう"): string {
+  const normalizedEnding = ending.trim().replace(/。$/, "") || "みましょう";
+  if (teForm) return `${teForm.replace(/。$/, "")}${normalizedEnding}`;
   const text = label.trim().replace(/。$/, "");
   if (!text) return "";
+  if (text.endsWith(normalizedEnding)) return text;
+  if (normalizedEnding !== "みましょう") return `${text}${normalizedEnding}`;
   if (text.endsWith("してみましょう")) return text;
   if (text.endsWith("する")) return `${text.slice(0, -2)}してみましょう`;
   if (text.endsWith("入れる")) return `${text.slice(0, -2)}れてみましょう`;
@@ -30,14 +36,16 @@ export function toTryForm(label: string, teForm?: string): string {
 
 export function generateDirectionText(direction?: DirectionEntry): string {
   if (!direction) return "";
-  return ensureJapanesePeriod(ensureMashou(direction.sentence ?? direction.label));
+  return ensureJapanesePeriod(direction.sentence ?? ensureMashou(direction.label, direction.ending));
 }
 
 export function generateActionText(situation?: SituationEntry, action?: ActionEntry): string {
   if (!action) return "";
   if (action.sentence) return ensureJapanesePeriod(action.sentence);
-  if (!situation) return ensureJapanesePeriod(toTryForm(action.label, action.teForm));
-  return ensureJapanesePeriod(`${situation.label}は、${toTryForm(action.label, action.teForm)}`);
+  const actionText = toTryForm(action.label, action.teForm, action.actionEnding);
+  if (!situation) return ensureJapanesePeriod(actionText);
+  const connector = situation.sentenceConnector ?? "は";
+  return ensureJapanesePeriod(`${situation.label}${connector}、${actionText}`);
 }
 
 export function generateStaffSupportText(support?: StaffSupportEntry): string {
@@ -45,7 +53,9 @@ export function generateStaffSupportText(support?: StaffSupportEntry): string {
   if (support.sentence) return ensureJapanesePeriod(support.sentence);
   const ending = support.ending ?? "取り組みやすくなるよう支援します";
   const lead = support.lead ?? normalizeSupportLabel(support.label);
-  return ensureJapanesePeriod(`職員は、${lead}を行い、${ending}`);
+  const subject = support.subject ?? "職員は";
+  const connector = support.connector ?? "を行い、";
+  return ensureJapanesePeriod(`${subject}、${lead}${connector}${ending}`);
 }
 
 function normalizeSupportLabel(label: string): string {

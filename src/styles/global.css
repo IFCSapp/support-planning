@@ -908,9 +908,51 @@ textarea {
   gap: 0.75rem;
 }
 
+.dictionary-actions {
+  margin-bottom: 1rem;
+}
+
+.dictionary-entry-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: center;
+}
+
 .dictionary-entry small {
   color: #64748b;
   font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+.domain-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 0.75rem;
+}
+
+.domain-selector legend {
+  color: #475569;
+  font-weight: 700;
+  padding: 0 0.25rem;
+}
+
+.domain-selector label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  background: #ffffff;
+  padding: 0.25rem 0.55rem;
+  font-weight: 400;
+}
+
+.domain-selector input {
+  width: 1rem;
+  min-height: 1rem;
 }
 
 @media (max-width: 780px) {

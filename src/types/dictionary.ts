@@ -17,6 +17,7 @@ export type DirectionEntry = {
   domainIds: string[];
   label: string;
   sentence?: string;
+  ending?: string;
   tags?: string[];
 };
 
@@ -25,6 +26,7 @@ export type SituationEntry = {
   domainIds: string[];
   label: string;
   sentence?: string;
+  sentenceConnector?: string;
   tags?: string[];
 };
 
@@ -35,6 +37,7 @@ export type ActionEntry = {
   sentence?: string;
   shortGoal?: string;
   teForm?: string;
+  actionEnding?: string;
   tags?: string[];
 };
 
@@ -43,6 +46,8 @@ export type StaffSupportEntry = {
   domainIds: string[];
   label: string;
   sentence?: string;
+  subject?: string;
+  connector?: string;
   ending?: string;
   lead?: string;
   tags?: string[];

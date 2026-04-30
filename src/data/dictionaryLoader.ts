@@ -55,6 +55,7 @@ export function normalizeDictionary(raw: RawRecord): SupportPlanDictionary {
         domainIds: domainIds(entry, id),
         label: asString(entry.label || entry.text),
         sentence: asString(entry.sentence) || undefined,
+        ending: asString(entry.ending || entry.directionEnding) || undefined,
       }),
     );
     domainSituations.forEach((entry) =>
@@ -63,6 +64,7 @@ export function normalizeDictionary(raw: RawRecord): SupportPlanDictionary {
         domainIds: domainIds(entry, id),
         label: asString(entry.label || entry.text),
         sentence: asString(entry.sentence) || undefined,
+        sentenceConnector: asString(entry.sentenceConnector || entry.connector) || undefined,
       }),
     );
     domainActions.forEach((entry) =>
@@ -73,6 +75,7 @@ export function normalizeDictionary(raw: RawRecord): SupportPlanDictionary {
         sentence: asString(entry.sentence) || undefined,
         shortGoal: asString(entry.shortGoal) || undefined,
         teForm: asString(entry.teForm) || undefined,
+        actionEnding: asString(entry.actionEnding || entry.ending) || undefined,
       }),
     );
     domainSupports.forEach((entry) => {
@@ -84,6 +87,8 @@ export function normalizeDictionary(raw: RawRecord): SupportPlanDictionary {
         domainIds: domainIds(entry, id),
         label: asString(entry.label || entry.text || lead),
         sentence,
+        subject: asString(entry.subject || entry.supportSubject) || undefined,
+        connector: asString(entry.connector || entry.supportConnector) || undefined,
         ending: ending || undefined,
         lead: lead || undefined,
       });
