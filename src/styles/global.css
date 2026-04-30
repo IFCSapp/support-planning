@@ -657,3 +657,79 @@ textarea {
     padding: 0;
   }
 }
+
+.idea-box {
+  border: 1px solid #99f6e4;
+  border-radius: 8px;
+  background: #f0fdfa;
+  padding: 0.85rem;
+}
+
+.idea-box summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: #0f766e;
+}
+
+.multi-select-block {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.selected-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.removable-chip {
+  width: auto;
+  min-height: 34px;
+  padding: 0.35rem 0.7rem;
+}
+
+.idea-empty {
+  border: 1px dashed #5eead4;
+  border-radius: 8px;
+  color: #64748b;
+  background: #ffffff;
+  padding: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.idea-list {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 0.85rem;
+}
+
+.idea-list h3 {
+  font-size: 1rem;
+  margin-bottom: 0;
+}
+
+.idea-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: center;
+  border: 1px solid #ccfbf1;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 0.75rem;
+}
+
+.idea-card p {
+  margin: 0.25rem 0;
+}
+
+.idea-card small {
+  color: #64748b;
+}
+
+@media (max-width: 780px) {
+  .idea-card {
+    grid-template-columns: 1fr;
+  }
+}

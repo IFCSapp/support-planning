@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import type { SupportPlanDictionary } from "../types/dictionary";
+import type { ActNoticeEntry, GenerationRule, StaffSupportEntry, SupportPlanDictionary, TriggerEntry } from "../types/dictionary";
 import type { InterviewPurpose, PlanBlock, SupportPlanDraft } from "../types/plan";
 import { generateActionText, generateDirectionText, generateStaffSupportText } from "../logic/generateTexts";
+import { suggestIdeas } from "../logic/suggestIdeas";
 import { validatePlanBlock } from "../logic/validatePlan";
 import { getPlan, savePlan } from "../storage/db";
 import { createId } from "../utils/id";
@@ -333,6 +334,32 @@ function StepVocabularySelect({ dictionary, blocks, activeBlock, setActiveBlockI
     };
   }, [activeBlock.domainId, dictionary, query]);
 
+  const ideaRules = useMemo(
+    () => suggestIdeas(dictionary.generationRules, activeBlock.triggerIds, activeBlock.actNoticeIds),
+    [dictionary.generationRules, activeBlock.triggerIds, activeBlock.actNoticeIds],
+  );
+
+  function toggleId(field: "triggerIds" | "actNoticeIds", id: string) {
+    if (!id) return;
+    const currentIds = activeBlock[field];
+    const nextIds = currentIds.includes(id) ? currentIds.filter((value) => value !== id) : [...currentIds, id];
+    updateBlock(activeBlock.id, field === "triggerIds" ? { triggerIds: nextIds } : { actNoticeIds: nextIds });
+  }
+
+  function clearClues() {
+    updateBlock(activeBlock.id, { triggerIds: [], actNoticeIds: [] });
+  }
+
+  function applySuggestion(rule: GenerationRule) {
+    const action = findSuggestedAction(dictionary, activeBlock.domainId, rule);
+    const support = findSuggestedSupport(dictionary, activeBlock.domainId, rule);
+    const patch: Partial<PlanBlock> = {};
+    if (action) patch.actionId = action.id;
+    if (support) patch.staffSupportId = support.id;
+    if (!Object.keys(patch).length) return;
+    setSelection(activeBlock.id, patch);
+  }
+
   return (
     <div className="vocab-layout">
       <div className="panel vocab-panel">
@@ -349,6 +376,35 @@ function StepVocabularySelect({ dictionary, blocks, activeBlock, setActiveBlockI
         </div>
         <label>検索<input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="語句で絞り込み" /></label>
         <label>支援領域<select value={activeBlock.domainId} onChange={(event) => setSelection(activeBlock.id, { domainId: event.target.value })}>{dictionary.domains.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
+
+        <details className="idea-box" open>
+          <summary>支援アイデアの材料を選ぶ</summary>
+          <p className="muted">先行条件とACT通知は、支援候補を出すための補助項目です。計画文にはそのまま入りません。</p>
+          <MultiSelect
+            label="先行条件"
+            placeholder="先行条件を追加"
+            items={dictionary.triggers}
+            selectedIds={activeBlock.triggerIds}
+            onToggle={(id) => toggleId("triggerIds", id)}
+          />
+          <MultiSelect
+            label="ACT通知"
+            placeholder="ACT通知を追加"
+            items={dictionary.actNotices}
+            selectedIds={activeBlock.actNoticeIds}
+            onToggle={(id) => toggleId("actNoticeIds", id)}
+          />
+          {(activeBlock.triggerIds.length > 0 || activeBlock.actNoticeIds.length > 0) && (
+            <button type="button" onClick={clearClues}>材料をクリア</button>
+          )}
+          <SuggestionList
+            rules={ideaRules}
+            dictionary={dictionary}
+            activeDomainId={activeBlock.domainId}
+            onApply={applySuggestion}
+          />
+        </details>
+
         <Select label="方向性" value={activeBlock.directionId} items={filtered.directions} onChange={(id) => setSelection(activeBlock.id, { directionId: id })} />
         <Select label="場面" value={activeBlock.situationId} items={filtered.situations} onChange={(id) => setSelection(activeBlock.id, { situationId: id })} />
         <Select label="行動" value={activeBlock.actionId} items={filtered.actions} onChange={(id) => setSelection(activeBlock.id, { actionId: id })} />
@@ -368,6 +424,112 @@ function Select<T extends { id: string; label: string }>({ label, value, items, 
       </select>
     </label>
   );
+}
+
+function MultiSelect<T extends TriggerEntry | ActNoticeEntry>({ label, placeholder, items, selectedIds, onToggle }: {
+  label: string;
+  placeholder: string;
+  items: T[];
+  selectedIds: string[];
+  onToggle: (id: string) => void;
+}) {
+  const selectedItems = selectedIds.map((id) => items.find((item) => item.id === id)).filter(Boolean) as T[];
+  const categories = Array.from(new Set(items.map((item) => item.category).filter(Boolean)));
+
+  return (
+    <div className="multi-select-block">
+      <label>{label}
+        <select value="" onChange={(event) => onToggle(event.target.value)}>
+          <option value="">{placeholder}</option>
+          {categories.map((category) => (
+            <optgroup key={category} label={category}>
+              {items.filter((item) => item.category === category).map((item) => (
+                <option key={item.id} value={item.id}>{selectedIds.includes(item.id) ? "✓ " : ""}{item.label}</option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
+      </label>
+      {selectedItems.length > 0 && (
+        <div className="selected-chip-row" aria-label={label + "の選択中"}>
+          {selectedItems.map((item) => (
+            <button type="button" className="chip selected removable-chip" key={item.id} onClick={() => onToggle(item.id)}>
+              {item.label}<span aria-hidden="true"> ×</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SuggestionList({ rules, dictionary, activeDomainId, onApply }: {
+  rules: GenerationRule[];
+  dictionary: SupportPlanDictionary;
+  activeDomainId: string;
+  onApply: (rule: GenerationRule) => void;
+}) {
+  if (!rules.length) {
+    return <div className="idea-empty">材料を選ぶと、近い支援候補が表示されます。</div>;
+  }
+
+  return (
+    <div className="idea-list" aria-label="支援アイデア候補">
+      <h3>支援候補</h3>
+      {rules.map((rule) => {
+        const action = findSuggestedAction(dictionary, activeDomainId, rule);
+        const support = findSuggestedSupport(dictionary, activeDomainId, rule);
+        const canApply = Boolean(action || support);
+        return (
+          <article className="idea-card" key={rule.id}>
+            <div>
+              <strong>{rule.suggestedShortGoal || "支援アイデア"}</strong>
+              <p>{rule.suggestedSupportOperation || rule.description || "近い語彙候補を確認してください。"}</p>
+              <small>
+                {action ? "行動候補：" + action.label : "行動候補：該当なし"} / {support ? "職員支援候補：" + support.label : "職員支援候補：該当なし"}
+              </small>
+            </div>
+            <button type="button" disabled={!canApply} onClick={() => onApply(rule)}>候補を反映</button>
+          </article>
+        );
+      })}
+    </div>
+  );
+}
+
+function findSuggestedAction(dictionary: SupportPlanDictionary, domainId: string, rule: GenerationRule) {
+  const byIds = dictionary.actions.find((item) => item.domainIds.includes(domainId) && rule.suggestedActionIds?.includes(item.id));
+  if (byIds) return byIds;
+  const shortGoal = rule.suggestedShortGoal?.trim();
+  if (!shortGoal) return undefined;
+  return dictionary.actions.find((item) => item.domainIds.includes(domainId) && (item.shortGoal === shortGoal || item.label.includes(shortGoal) || shortGoal.includes(item.label)));
+}
+
+function findSuggestedSupport(dictionary: SupportPlanDictionary, domainId: string, rule: GenerationRule): StaffSupportEntry | undefined {
+  const byIds = dictionary.staffSupports.find((item) => item.domainIds.includes(domainId) && rule.suggestedSupportIds?.includes(item.id));
+  if (byIds) return byIds;
+  const operation = rule.suggestedSupportOperation?.trim();
+  if (!operation) return undefined;
+  return dictionary.staffSupports.find((item) => item.domainIds.includes(domainId) && supportMatches(item, operation));
+}
+
+function supportMatches(support: StaffSupportEntry, operation: string): boolean {
+  const candidates = [support.label, support.lead, support.sentence].filter(Boolean) as string[];
+  return candidates.some((candidate) => {
+    if (candidate.includes(operation) || operation.includes(candidate.replace(/し$/, "する")) || operation.includes(candidate)) return true;
+    const tokens = keywordTokens(operation);
+    if (!tokens.length) return false;
+    const matched = tokens.filter((token) => candidate.includes(token)).length;
+    return matched >= Math.min(2, tokens.length);
+  });
+}
+
+function keywordTokens(text: string): string[] {
+  return text
+    .replace(/[、。・（）()]/g, " ")
+    .split(/\s+|を|が|は|に|へ|と|で|の|や|から|まで|等|など|一緒|本人|職員|支援|します|する|し|行う|用意|示す|確認|調整|決める|練習|提示|分ける/)
+    .map((token) => token.trim())
+    .filter((token) => token.length >= 2);
 }
 
 function ConnectedPreview({ block, updateBlock, onCopied }: { block: PlanBlock; updateBlock: (id: string, patch: Partial<PlanBlock>) => void; onCopied: () => void }) {

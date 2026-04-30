@@ -80,6 +80,8 @@ export type GenerationRule = {
   suggestedMonitoringIds?: string[];
   suggestedShortGoal?: string;
   suggestedSupportOperation?: string;
+  triggerLabels?: string[];
+  actNoticeLabels?: string[];
   description?: string;
 };
 

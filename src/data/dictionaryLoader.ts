@@ -110,6 +110,9 @@ export function normalizeDictionary(raw: RawRecord): SupportPlanDictionary {
     };
   });
 
+  const triggers = normalizeTriggers(raw);
+  const actNotices = normalizeActNotices(raw);
+
   return {
     version: asString(raw.version || raw.schemaVersion || raw.revision && (raw.revision as RawRecord).version) || "unknown",
     domains,
@@ -118,9 +121,9 @@ export function normalizeDictionary(raw: RawRecord): SupportPlanDictionary {
     actions: actions.length ? actions : asArray<ActionEntry>(raw.actions),
     staffSupports: staffSupports.length ? staffSupports : asArray<StaffSupportEntry>(raw.staffSupports),
     monitorings: monitorings.length ? monitorings : asArray<MonitoringEntry>(raw.monitorings),
-    triggers: normalizeTriggers(raw),
-    actNotices: normalizeActNotices(raw),
-    generationRules: normalizeRules(raw),
+    triggers,
+    actNotices,
+    generationRules: normalizeRules(raw, triggers, actNotices),
     avoidPhrases: normalizeAvoidPhrases(raw),
   };
 }
@@ -149,20 +152,41 @@ function normalizeAvoidPhrases(raw: RawRecord): AvoidPhraseEntry[] {
   }));
 }
 
-function normalizeRules(raw: RawRecord): GenerationRule[] {
+function normalizeRules(raw: RawRecord, triggers: TriggerEntry[], actNotices: ActNoticeEntry[]): GenerationRule[] {
   return asArray<RawRecord>(raw.generationRules).map((entry) => {
+    const match = (entry.match || {}) as RawRecord;
     const recommend = (entry.recommend || {}) as RawRecord;
+    const triggerLabels = asArray<string>(match.antecedentIncludes).map(String).filter(Boolean);
+    const actNoticeLabels = asArray<string>(match.noticeIncludes).map(String).filter(Boolean);
+    const triggerIdsFromLabels = labelsToIds(triggerLabels, triggers);
+    const noticeIdsFromLabels = labelsToIds(actNoticeLabels, actNotices);
+
     return {
       id: asString(entry.id),
-      triggerIds: asArray<string>(entry.triggerIds).map(String),
-      actNoticeIds: asArray<string>(entry.actNoticeIds).map(String),
+      triggerIds: uniqueStrings([...asArray<string>(entry.triggerIds).map(String), ...triggerIdsFromLabels]),
+      actNoticeIds: uniqueStrings([...asArray<string>(entry.actNoticeIds).map(String), ...noticeIdsFromLabels]),
       suggestedDirectionIds: asArray<string>(entry.suggestedDirectionIds).map(String),
       suggestedActionIds: asArray<string>(entry.suggestedActionIds).map(String),
       suggestedSupportIds: asArray<string>(entry.suggestedSupportIds).map(String),
       suggestedMonitoringIds: asArray<string>(entry.suggestedMonitoringIds).map(String),
       suggestedShortGoal: asString(recommend.shortGoal) || undefined,
       suggestedSupportOperation: asString(recommend.supportOperation) || undefined,
+      triggerLabels,
+      actNoticeLabels,
       description: asString(entry.description || entry.logic) || undefined,
     };
   });
+}
+
+function labelsToIds<T extends { id: string; label: string }>(labels: string[], entries: T[]): string[] {
+  return labels.flatMap((label) => {
+    const normalizedLabel = label.trim();
+    return entries
+      .filter((entry) => entry.label === normalizedLabel || entry.label.includes(normalizedLabel) || normalizedLabel.includes(entry.label))
+      .map((entry) => entry.id);
+  });
+}
+
+function uniqueStrings(values: string[]): string[] {
+  return Array.from(new Set(values.filter(Boolean)));
 }
