@@ -1,17 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ActNoticeEntry, GenerationRule, StaffSupportEntry, SupportPlanDictionary, TriggerEntry } from "../types/dictionary";
-import type { InterviewPurpose, PlanBlock, SupportPlanDraft } from "../types/plan";
+import type { InterviewPurpose, PersonHope, PlanBlock, SupportPlanDraft } from "../types/plan";
 import { generateActionText, generateDirectionText, generateStaffSupportText } from "../logic/generateTexts";
 import { suggestIdeas } from "../logic/suggestIdeas";
 import { validatePlanBlock } from "../logic/validatePlan";
 import { getPlan, savePlan } from "../storage/db";
 import { createId } from "../utils/id";
-import { todayString } from "../utils/date";
+import { planEndDateFromMonths, todayString } from "../utils/date";
 import PlanPreview from "./PlanPreview";
 import CopyButtons from "./CopyButtons";
 import QualityWarnings from "./QualityWarnings";
+import type { WorkflowHeader } from "./Layout";
 
-const steps = ["面談目的", "基本情報", "本人の希望", "支援領域", "語彙選択", "3文確認", "保存・出力"];
+const steps = ["基本情報", "本人の希望", "語彙選択", "3文確認", "保存・出力"];
 
 const purposes: Array<[InterviewPurpose, string]> = [
   ["new", "新規計画"],
@@ -29,14 +30,17 @@ type Props = {
   editId?: string;
   onNavigate: (route: string) => void;
   onCopied: () => void;
+  onHeaderChange?: (header: WorkflowHeader | null) => void;
 };
 
-export default function PlanWizard({ dictionary, editId, onNavigate, onCopied }: Props) {
+export default function PlanWizard({ dictionary, editId, onNavigate, onCopied, onHeaderChange }: Props) {
   const [step, setStep] = useState(0);
   const [dirty, setDirty] = useState(false);
   const [saveState, setSaveState] = useState<"未保存" | "保存中" | "保存済み" | "保存エラー">("未保存");
   const [activeBlockId, setActiveBlockId] = useState("");
   const [draft, setDraft] = useState<SupportPlanDraft>(() => createDraft(dictionary.version));
+  const [selectedPlanMonths, setSelectedPlanMonths] = useState<1 | 3 | null>(null);
+  const [vocabularyNewBlockIds, setVocabularyNewBlockIds] = useState<string[]>([]);
 
   useEffect(() => {
     if (!editId) return;
@@ -72,6 +76,25 @@ export default function PlanWizard({ dictionary, editId, onNavigate, onCopied }:
   }, [dirty, draft]);
 
   const activeBlock = draft.blocks.find((block) => block.id === activeBlockId) ?? draft.blocks[0];
+
+  useEffect(() => {
+    onHeaderChange?.({
+      title: steps[step],
+      status: `${editId ? "計画編集" : "新規計画作成"} / ${saveState}`,
+      steps,
+      currentStep: step,
+      onStepChange: setStep,
+    });
+    return () => onHeaderChange?.(null);
+  }, [editId, onHeaderChange, saveState, step]);
+
+  useEffect(() => {
+    if (step !== 2 || draft.blocks.length) return;
+    const block = createBlock("");
+    changeDraft((current) => ({ ...current, blocks: [block] }));
+    setVocabularyNewBlockIds((ids) => [...ids, block.id]);
+    setActiveBlockId(block.id);
+  }, [draft.blocks.length, step]);
 
   function changeDraft(updater: (current: SupportPlanDraft) => SupportPlanDraft) {
     setDraft((current) => ({ ...updater(current), updatedAt: new Date().toISOString() }));
@@ -130,16 +153,18 @@ export default function PlanWizard({ dictionary, editId, onNavigate, onCopied }:
     setActiveBlockId(block.id);
   }
 
-  function duplicateBlock(block: PlanBlock) {
-    const copy = { ...block, id: createId("block") };
-    updateDraft({ blocks: [...draft.blocks, copy] });
-    setActiveBlockId(copy.id);
-  }
-
   function removeBlock(blockId: string) {
     const next = draft.blocks.filter((block) => block.id !== blockId);
     updateDraft({ blocks: next });
     setActiveBlockId(next[0]?.id ?? "");
+    setVocabularyNewBlockIds((ids) => ids.filter((id) => id !== blockId));
+  }
+
+  function addVocabularyBlock() {
+    const block = createBlock("");
+    updateDraft({ blocks: [...draft.blocks, block] });
+    setVocabularyNewBlockIds((ids) => [...ids, block.id]);
+    setActiveBlockId(block.id);
   }
 
   async function complete() {
@@ -151,7 +176,7 @@ export default function PlanWizard({ dictionary, editId, onNavigate, onCopied }:
   }
 
   return (
-    <section className="page">
+    <section className="page wizard-page">
       <div className="button-row no-print">
         <button onClick={() => onNavigate("/plans")}>計画一覧へ戻る</button>
       </div>
@@ -167,15 +192,27 @@ export default function PlanWizard({ dictionary, editId, onNavigate, onCopied }:
         </ol>
       </div>
 
-      {step === 0 && <StepPurpose draft={draft} updateDraft={updateDraft} />}
-      {step === 1 && <StepClientInfo draft={draft} updateDraft={updateDraft} />}
-      {step === 2 && <StepPersonHope draft={draft} updateDraft={updateDraft} />}
-      {step === 3 && <StepDomainSelect dictionary={dictionary} draft={draft} toggleDomain={toggleDomain} />}
-      {step === 4 && activeBlock && (
-        <StepVocabularySelect dictionary={dictionary} blocks={draft.blocks} activeBlock={activeBlock} setActiveBlockId={setActiveBlockId} setSelection={setSelection} updateBlock={updateBlock} duplicateBlock={duplicateBlock} removeBlock={removeBlock} onCopied={onCopied} />
+      <div className="wizard-actions top-actions no-print">
+        <button disabled={step === 0} onClick={() => setStep((value) => Math.max(0, value - 1))}>戻る</button>
+        {step < steps.length - 1 ? (
+          <button className="primary" onClick={() => setStep((value) => Math.min(steps.length - 1, value + 1))}>次へ</button>
+        ) : (
+          <button className="primary" onClick={complete}>保存して完了</button>
+        )}
+      </div>
+
+      {step === 0 && (
+        <div className="stack">
+          <StepPurpose draft={draft} updateDraft={updateDraft} />
+          <StepClientInfo draft={draft} selectedPlanMonths={selectedPlanMonths} setSelectedPlanMonths={setSelectedPlanMonths} updateDraft={updateDraft} />
+        </div>
       )}
-      {step === 5 && <ConfirmStep blocks={draft.blocks} onCopied={onCopied} />}
-      {step === 6 && <OutputStep draft={draft} complete={complete} onCopied={onCopied} />}
+      {step === 1 && <StepPersonHope draft={draft} updateDraft={updateDraft} />}
+      {step === 2 && activeBlock && (
+        <StepVocabularySelect dictionary={dictionary} personHope={draft.personHope} blocks={draft.blocks} activeBlock={activeBlock} vocabularyNewBlockIds={vocabularyNewBlockIds} setActiveBlockId={setActiveBlockId} setSelection={setSelection} updateBlock={updateBlock} addVocabularyBlock={addVocabularyBlock} removeBlock={removeBlock} onCopied={onCopied} />
+      )}
+      {step === 3 && <ConfirmStep blocks={draft.blocks} onCopied={onCopied} />}
+      {step === 4 && <OutputStep draft={draft} complete={complete} onCopied={onCopied} />}
 
       <div className="wizard-actions no-print">
         <button disabled={step === 0} onClick={() => setStep((value) => Math.max(0, value - 1))}>戻る</button>
@@ -235,15 +272,43 @@ function StepPurpose({ draft, updateDraft }: { draft: SupportPlanDraft; updateDr
   );
 }
 
-function StepClientInfo({ draft, updateDraft }: { draft: SupportPlanDraft; updateDraft: (patch: Partial<SupportPlanDraft>) => void }) {
+function StepClientInfo({ draft, selectedPlanMonths, setSelectedPlanMonths, updateDraft }: {
+  draft: SupportPlanDraft;
+  selectedPlanMonths: 1 | 3 | null;
+  setSelectedPlanMonths: (months: 1 | 3 | null) => void;
+  updateDraft: (patch: Partial<SupportPlanDraft>) => void;
+}) {
   const info = draft.clientInfo;
+  const setPlanMonths = (months: 1 | 3) => {
+    if (!info.planStartDate) return;
+    setSelectedPlanMonths(months);
+    updateDraft({ clientInfo: { ...info, planEndDate: planEndDateFromMonths(info.planStartDate, months) } });
+  };
+  const changePlanStartDate = (planStartDate: string) => {
+    updateDraft({
+      clientInfo: {
+        ...info,
+        planStartDate,
+        planEndDate: selectedPlanMonths && planStartDate ? planEndDateFromMonths(planStartDate, selectedPlanMonths) : info.planEndDate,
+      },
+    });
+  };
+  const changePlanEndDate = (planEndDate: string) => {
+    setSelectedPlanMonths(null);
+    updateDraft({ clientInfo: { ...info, planEndDate } });
+  };
   return (
     <div className="form-grid panel">
       <p className="muted wide">利用者表示名は、イニシャルや管理番号でも構いません。</p>
       <label>利用者表示名<input value={info.displayName} onChange={(event) => updateDraft({ clientInfo: { ...info, displayName: event.target.value } })} /></label>
       <label>作成日<input type="date" value={draft.createdAt.slice(0, 10)} readOnly /></label>
-      <label>計画期間開始日<input type="date" value={info.planStartDate ?? ""} onChange={(event) => updateDraft({ clientInfo: { ...info, planStartDate: event.target.value } })} /></label>
-      <label>計画期間終了日<input type="date" value={info.planEndDate ?? ""} onChange={(event) => updateDraft({ clientInfo: { ...info, planEndDate: event.target.value } })} /></label>
+      <label>計画期間開始日<input type="date" value={info.planStartDate ?? ""} onChange={(event) => changePlanStartDate(event.target.value)} /></label>
+      <div className="date-shortcuts" aria-label="計画期間の終了日を設定">
+        <span>終了日を自動設定</span>
+        <button type="button" className={selectedPlanMonths === 1 ? "selected" : ""} disabled={!info.planStartDate} onClick={() => setPlanMonths(1)}>1か月</button>
+        <button type="button" className={selectedPlanMonths === 3 ? "selected" : ""} disabled={!info.planStartDate} onClick={() => setPlanMonths(3)}>3か月</button>
+      </div>
+      <label>計画期間終了日<input type="date" value={info.planEndDate ?? ""} onChange={(event) => changePlanEndDate(event.target.value)} /></label>
       <label>担当職員名<input value={info.staffName ?? ""} onChange={(event) => updateDraft({ clientInfo: { ...info, staffName: event.target.value } })} /></label>
       <label className="wide">面談メモ<textarea value={draft.interviewMemo ?? ""} onChange={(event) => updateDraft({ interviewMemo: event.target.value })} /></label>
     </div>
@@ -312,20 +377,22 @@ function HopeItem({ label, value }: { label: string; value?: string }) {
   );
 }
 
-function StepVocabularySelect({ dictionary, blocks, activeBlock, setActiveBlockId, setSelection, updateBlock, duplicateBlock, removeBlock, onCopied }: {
+function StepVocabularySelect({ dictionary, personHope, blocks, activeBlock, vocabularyNewBlockIds, setActiveBlockId, setSelection, updateBlock, addVocabularyBlock, removeBlock, onCopied }: {
   dictionary: SupportPlanDictionary;
+  personHope: PersonHope;
   blocks: PlanBlock[];
   activeBlock: PlanBlock;
+  vocabularyNewBlockIds: string[];
   setActiveBlockId: (id: string) => void;
   setSelection: (id: string, patch: Partial<PlanBlock>) => void;
   updateBlock: (id: string, patch: Partial<PlanBlock>) => void;
-  duplicateBlock: (block: PlanBlock) => void;
+  addVocabularyBlock: () => void;
   removeBlock: (id: string) => void;
   onCopied: () => void;
 }) {
   const [query, setQuery] = useState("");
   const filtered = useMemo(() => {
-    const byDomain = <T extends { domainIds: string[]; label: string }>(items: T[]) => items.filter((item) => item.domainIds.includes(activeBlock.domainId) && item.label.includes(query));
+    const byDomain = <T extends { domainIds: string[] }>(items: T[]) => items.filter((item) => item.domainIds.includes(activeBlock.domainId));
     const withSelected = <T extends { id: string }>(items: T[], allItems: T[], selectedId?: string) => {
       const selectedItem = allItems.find((item) => item.id === selectedId);
       return selectedItem && !items.some((item) => item.id === selectedItem.id) ? [selectedItem, ...items] : items;
@@ -336,7 +403,18 @@ function StepVocabularySelect({ dictionary, blocks, activeBlock, setActiveBlockI
       actions: withSelected(byDomain(dictionary.actions), dictionary.actions, activeBlock.actionId),
       supports: withSelected(byDomain(dictionary.staffSupports), dictionary.staffSupports, activeBlock.staffSupportId),
     };
-  }, [activeBlock.domainId, activeBlock.directionId, activeBlock.situationId, activeBlock.actionId, activeBlock.staffSupportId, dictionary, query]);
+  }, [activeBlock.domainId, activeBlock.directionId, activeBlock.situationId, activeBlock.actionId, activeBlock.staffSupportId, dictionary]);
+
+  const searchResults = useMemo(() => {
+    const keyword = query.trim();
+    if (!keyword) return [];
+    return [
+      ...dictionary.directions.filter((item) => vocabularyItemMatches(item, keyword)).map((item) => ({ field: "directionId" as const, type: "方向性", item })),
+      ...dictionary.situations.filter((item) => vocabularyItemMatches(item, keyword)).map((item) => ({ field: "situationId" as const, type: "場面", item })),
+      ...dictionary.actions.filter((item) => vocabularyItemMatches(item, keyword)).map((item) => ({ field: "actionId" as const, type: "行動", item })),
+      ...dictionary.staffSupports.filter((item) => vocabularyItemMatches(item, keyword)).map((item) => ({ field: "staffSupportId" as const, type: "職員支援", item })),
+    ].slice(0, 30);
+  }, [dictionary, query]);
 
   const ideaRules = useMemo(
     () => suggestIdeas(dictionary.generationRules, activeBlock.triggerIds, activeBlock.actNoticeIds, dictionary.triggers, dictionary.actNotices),
@@ -354,32 +432,51 @@ function StepVocabularySelect({ dictionary, blocks, activeBlock, setActiveBlockI
     updateBlock(activeBlock.id, { triggerIds: [], actNoticeIds: [] });
   }
 
-  function applySuggestion(rule: GenerationRule) {
-    const action = findSuggestedAction(dictionary, activeBlock.domainId, rule);
-    const support = findSuggestedSupport(dictionary, activeBlock.domainId, rule);
-    const patch: Partial<PlanBlock> = {};
-    if (action) patch.actionId = action.id;
-    if (support) patch.staffSupportId = support.id;
-    if (!Object.keys(patch).length) return;
+  function setVocabularySelection<T extends { id: string; domainIds: string[] }>(field: "directionId" | "situationId" | "actionId" | "staffSupportId", id: string, items: T[]) {
+    const selectedItem = items.find((item) => item.id === id);
+    const patch: Partial<PlanBlock> = { [field]: id };
+    if (selectedItem?.domainIds[0]) patch.domainId = selectedItem.domainIds[0];
+    setSelection(activeBlock.id, patch);
+    setQuery("");
+  }
+
+  function setIdeaSelection<T extends { id: string; domainIds: string[] }>(field: "actionId" | "staffSupportId", id: string, items: T[]) {
+    const selectedItem = items.find((item) => item.id === id);
+    const patch: Partial<PlanBlock> = { [field]: id, triggerIds: [], actNoticeIds: [] };
+    if (selectedItem?.domainIds[0]) patch.domainId = selectedItem.domainIds[0];
     setSelection(activeBlock.id, patch);
   }
 
   return (
     <div className="vocab-layout">
       <div className="panel vocab-panel">
-        <div className="button-row">
+        <HopeSummary hope={personHope} />
+        <div className="button-row vocab-block-row">
           {blocks.map((block, index) => (
-            <button key={block.id} className={block.id === activeBlock.id ? "chip selected" : "chip"} onClick={() => setActiveBlockId(block.id)}>
-              {index + 1}. {dictionary.domains.find((item) => item.id === block.domainId)?.label ?? "領域"}
-            </button>
+            <span key={block.id} className={block.id === activeBlock.id ? "vocab-block-chip selected" : "vocab-block-chip"}>
+              <button type="button" className="vocab-block-main" onClick={() => setActiveBlockId(block.id)}>
+                {index + 1}. {dictionary.domains.find((item) => item.id === block.domainId)?.label ?? "支援領域未選択"}
+              </button>
+              <button type="button" className="vocab-block-delete" aria-label="ブロックを削除" onClick={() => removeBlock(block.id)}>×</button>
+            </span>
           ))}
+          <button type="button" className="chip add-block" onClick={addVocabularyBlock}>＋</button>
         </div>
-        <div className="button-row">
-          <button onClick={() => duplicateBlock(activeBlock)}>ブロック複製</button>
-          <button className="danger" onClick={() => removeBlock(activeBlock.id)}>ブロック削除</button>
-        </div>
-        <label>検索<input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="語句で絞り込み" /></label>
-        <label>支援領域<select value={activeBlock.domainId} onChange={(event) => setSelection(activeBlock.id, { domainId: event.target.value })}>{dictionary.domains.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
+        <label>検索<input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="すべての領域から検索" /></label>
+        {query.trim() && (
+          <div className="search-results" aria-label="検索結果">
+            {searchResults.length > 0 ? searchResults.map(({ field, type, item }) => (
+              <button type="button" key={`${field}-${item.id}`} onClick={() => setVocabularySelection(field, item.id, [item])}>
+                <span>{type}</span>
+                <strong>{item.label}</strong>
+                <small>{item.domainIds.map((id) => dictionary.domains.find((domain) => domain.id === id)?.label ?? id).join(" / ")}</small>
+              </button>
+            )) : <p>該当する語彙がありません。</p>}
+          </div>
+        )}
+        {vocabularyNewBlockIds.includes(activeBlock.id) && (
+          <label>支援領域<select value={activeBlock.domainId} onChange={(event) => setSelection(activeBlock.id, { domainId: event.target.value })}><option value="">選択してください</option>{dictionary.domains.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
+        )}
 
         <details className="idea-box" open>
           <summary>支援アイデアの材料を選ぶ</summary>
@@ -405,29 +502,70 @@ function StepVocabularySelect({ dictionary, blocks, activeBlock, setActiveBlockI
             rules={ideaRules}
             dictionary={dictionary}
             activeDomainId={activeBlock.domainId}
-            onApply={applySuggestion}
+            onSelectAction={(id) => setIdeaSelection("actionId", id, dictionary.actions)}
+            onSelectSupport={(id) => setIdeaSelection("staffSupportId", id, dictionary.staffSupports)}
           />
         </details>
 
-        <Select label="方向性" value={activeBlock.directionId} items={filtered.directions} onChange={(id) => setSelection(activeBlock.id, { directionId: id })} />
-        <Select label="場面" value={activeBlock.situationId} items={filtered.situations} onChange={(id) => setSelection(activeBlock.id, { situationId: id })} />
-        <Select label="行動" value={activeBlock.actionId} items={filtered.actions} onChange={(id) => setSelection(activeBlock.id, { actionId: id })} />
-        <Select label="職員支援" value={activeBlock.staffSupportId} items={filtered.supports} onChange={(id) => setSelection(activeBlock.id, { staffSupportId: id })} />
+        <Select label="方向性" value={activeBlock.directionId} items={filtered.directions} onChange={(id) => setVocabularySelection("directionId", id, dictionary.directions)} highlightWhenEmpty />
+        <Select label="場面" value={activeBlock.situationId} items={filtered.situations} onChange={(id) => setVocabularySelection("situationId", id, dictionary.situations)} highlightWhenEmpty />
+        <Select label="行動" value={activeBlock.actionId} items={filtered.actions} onChange={(id) => setVocabularySelection("actionId", id, dictionary.actions)} highlightWhenEmpty />
+        <Select label="職員支援" value={activeBlock.staffSupportId} items={filtered.supports} onChange={(id) => setVocabularySelection("staffSupportId", id, dictionary.staffSupports)} highlightWhenEmpty />
       </div>
       <ConnectedPreview block={activeBlock} updateBlock={updateBlock} onCopied={onCopied} />
     </div>
   );
 }
 
-function Select<T extends { id: string; label: string }>({ label, value, items, onChange }: { label: string; value?: string; items: T[]; onChange: (id: string) => void }) {
+function HopeSummary({ hope }: { hope: PersonHope }) {
+  const [expandedKeys, setExpandedKeys] = useState<string[]>([]);
+  const items = [
+    ["本人の言葉", hope.originalWords],
+    ["働き方", hope.workHope],
+    ["通所・訓練", hope.trainingHope],
+    ["心配なこと", hope.concerns],
+    ["できるようになりたいこと", hope.desiredChanges],
+  ].filter((item): item is [string, string] => Boolean(item[1]?.trim()));
+  const toggleExpanded = (label: string) => {
+    setExpandedKeys((keys) => keys.includes(label) ? keys.filter((key) => key !== label) : [...keys, label]);
+  };
+
   return (
-    <label>{label}
+    <section className="hope-summary" aria-label="本人の希望">
+      <strong>本人の希望</strong>
+      {items.length > 0 ? (
+        <div className="hope-summary-items">
+          {items.map(([label, value]) => {
+            const expanded = expandedKeys.includes(label);
+            return (
+              <span key={label} className={expanded ? "expanded" : ""}>
+                <b>{label}</b>{value}
+                <button type="button" className="hope-toggle" onClick={() => toggleExpanded(label)}>{expanded ? "閉じる" : "展開"}</button>
+              </span>
+            );
+          })}
+        </div>
+      ) : (
+        <p>未入力</p>
+      )}
+    </section>
+  );
+}
+
+function Select<T extends { id: string; label: string }>({ label, value, items, onChange, highlightWhenEmpty = false }: { label: string; value?: string; items: T[]; onChange: (id: string) => void; highlightWhenEmpty?: boolean }) {
+  const needsSelection = highlightWhenEmpty && !value;
+  return (
+    <label className={needsSelection ? "select-field needs-selection" : "select-field"}>{label}
       <select value={value ?? ""} onChange={(event) => onChange(event.target.value)}>
         <option value="">選択してください</option>
         {items.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
       </select>
     </label>
   );
+}
+
+function vocabularyItemMatches(item: { label: string; tags?: string[]; sentence?: string; shortGoal?: string; lead?: string }, keyword: string): boolean {
+  return [item.label, item.sentence, item.shortGoal, item.lead, ...(item.tags ?? [])].filter(Boolean).some((value) => value?.includes(keyword));
 }
 
 function MultiSelect<T extends TriggerEntry | ActNoticeEntry>({ label, placeholder, items, selectedIds, onToggle }: {
@@ -467,11 +605,12 @@ function MultiSelect<T extends TriggerEntry | ActNoticeEntry>({ label, placehold
   );
 }
 
-function SuggestionList({ rules, dictionary, activeDomainId, onApply }: {
+function SuggestionList({ rules, dictionary, activeDomainId, onSelectAction, onSelectSupport }: {
   rules: GenerationRule[];
   dictionary: SupportPlanDictionary;
   activeDomainId: string;
-  onApply: (rule: GenerationRule) => void;
+  onSelectAction: (id: string) => void;
+  onSelectSupport: (id: string) => void;
 }) {
   if (!rules.length) {
     return <div className="idea-empty">材料を選ぶと、近い支援候補が表示されます。</div>;
@@ -479,21 +618,33 @@ function SuggestionList({ rules, dictionary, activeDomainId, onApply }: {
 
   return (
     <div className="idea-list" aria-label="支援アイデア候補">
-      <h3>支援候補</h3>
+      <h3>支援アイデア</h3>
       {rules.map((rule) => {
         const action = findSuggestedAction(dictionary, activeDomainId, rule);
         const support = findSuggestedSupport(dictionary, activeDomainId, rule);
-        const canApply = Boolean(action || support);
         return (
           <article className="idea-card" key={rule.id}>
-            <div>
+            <div className="idea-card-summary">
               <strong>{rule.suggestedShortGoal || "支援アイデア"}</strong>
               <p>{rule.suggestedSupportOperation || rule.description || "近い語彙候補を確認してください。"}</p>
-              <small>
-                {action ? "行動候補：" + action.label : "行動候補：該当なし"} / {support ? "職員支援候補：" + support.label : "職員支援候補：該当なし"}
-              </small>
             </div>
-            <button type="button" disabled={!canApply} onClick={() => onApply(rule)}>候補を反映</button>
+            <div className="idea-picks">
+              {action && (
+                <button type="button" onClick={() => onSelectAction(action.id)}>
+                  <span>行動</span>
+                  <strong>{action.label}</strong>
+                  <small>{action.domainIds.map((id) => dictionary.domains.find((domain) => domain.id === id)?.label ?? id).join(" / ")}</small>
+                </button>
+              )}
+              {support && (
+                <button type="button" onClick={() => onSelectSupport(support.id)}>
+                  <span>職員支援</span>
+                  <strong>{support.label}</strong>
+                  <small>{support.domainIds.map((id) => dictionary.domains.find((domain) => domain.id === id)?.label ?? id).join(" / ")}</small>
+                </button>
+              )}
+              {!action && !support && <p>選択できる語彙候補がありません。</p>}
+            </div>
           </article>
         );
       })}

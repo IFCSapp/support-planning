@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { loadDictionary } from "./data/dictionaryLoader";
 import type { SupportPlanDictionary } from "./types/dictionary";
 import { saveSetting } from "./storage/db";
-import Layout from "./components/Layout";
+import Layout, { type WorkflowHeader } from "./components/Layout";
 import Home from "./components/Home";
 import PlanWizard from "./components/PlanWizard";
 import PlanList from "./components/PlanList";
@@ -16,6 +16,7 @@ export default function App() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [route, setRoute] = useState(window.location.hash.replace(/^#/, "") || "/");
   const [toast, setToast] = useState("");
+  const [workflowHeader, setWorkflowHeader] = useState<WorkflowHeader | null>(null);
 
   useEffect(() => {
     loadDictionary()
@@ -36,6 +37,7 @@ export default function App() {
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    if (!/^\/plans\/new$/.test(route) && !/^\/plans\/[^/]+\/edit$/.test(route)) setWorkflowHeader(null);
   }, [route]);
 
   function navigate(nextRoute: string) {
@@ -67,7 +69,7 @@ export default function App() {
 
   if (loadError) {
     return (
-      <Layout route={route} onNavigate={navigate} onBack={goBack}>
+      <Layout route={route} workflowHeader={workflowHeader} onNavigate={navigate} onBack={goBack}>
         <section className="page">
           <div className="error-box">{loadError}</div>
         </section>
@@ -77,17 +79,17 @@ export default function App() {
 
   if (!dictionary) {
     return (
-      <Layout route={route} onNavigate={navigate} onBack={goBack}>
+      <Layout route={route} workflowHeader={workflowHeader} onNavigate={navigate} onBack={goBack}>
         <section className="page"><p>辞書データを読み込んでいます。</p></section>
       </Layout>
     );
   }
 
   return (
-    <Layout route={route} onNavigate={navigate} onBack={goBack}>
+    <Layout route={route} workflowHeader={workflowHeader} onNavigate={navigate} onBack={goBack}>
       {route === "/" && <Home onNavigate={navigate} />}
-      {route === "/plans/new" && <PlanWizard dictionary={dictionary} onNavigate={navigate} onCopied={copied} />}
-      {editId && <PlanWizard dictionary={dictionary} editId={editId} onNavigate={navigate} onCopied={copied} />}
+      {route === "/plans/new" && <PlanWizard dictionary={dictionary} onNavigate={navigate} onCopied={copied} onHeaderChange={setWorkflowHeader} />}
+      {editId && <PlanWizard dictionary={dictionary} editId={editId} onNavigate={navigate} onCopied={copied} onHeaderChange={setWorkflowHeader} />}
       {(route === "/plans" || isPlanDetailRoute) && <PlanList route={route} dictionary={dictionary} onNavigate={navigate} onCopied={copied} />}
       {route === "/dictionary" && <DictionaryPage dictionary={dictionary} onNavigate={navigate} onChange={updateDictionary} />}
       {route === "/settings" && <SettingsPage dictionaryVersion={dictionary.version} onNavigate={navigate} />}
