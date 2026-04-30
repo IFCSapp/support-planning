@@ -326,17 +326,21 @@ function StepVocabularySelect({ dictionary, blocks, activeBlock, setActiveBlockI
   const [query, setQuery] = useState("");
   const filtered = useMemo(() => {
     const byDomain = <T extends { domainIds: string[]; label: string }>(items: T[]) => items.filter((item) => item.domainIds.includes(activeBlock.domainId) && item.label.includes(query));
-    return {
-      directions: byDomain(dictionary.directions),
-      situations: byDomain(dictionary.situations),
-      actions: byDomain(dictionary.actions),
-      supports: byDomain(dictionary.staffSupports),
+    const withSelected = <T extends { id: string }>(items: T[], allItems: T[], selectedId?: string) => {
+      const selectedItem = allItems.find((item) => item.id === selectedId);
+      return selectedItem && !items.some((item) => item.id === selectedItem.id) ? [selectedItem, ...items] : items;
     };
-  }, [activeBlock.domainId, dictionary, query]);
+    return {
+      directions: withSelected(byDomain(dictionary.directions), dictionary.directions, activeBlock.directionId),
+      situations: withSelected(byDomain(dictionary.situations), dictionary.situations, activeBlock.situationId),
+      actions: withSelected(byDomain(dictionary.actions), dictionary.actions, activeBlock.actionId),
+      supports: withSelected(byDomain(dictionary.staffSupports), dictionary.staffSupports, activeBlock.staffSupportId),
+    };
+  }, [activeBlock.domainId, activeBlock.directionId, activeBlock.situationId, activeBlock.actionId, activeBlock.staffSupportId, dictionary, query]);
 
   const ideaRules = useMemo(
-    () => suggestIdeas(dictionary.generationRules, activeBlock.triggerIds, activeBlock.actNoticeIds),
-    [dictionary.generationRules, activeBlock.triggerIds, activeBlock.actNoticeIds],
+    () => suggestIdeas(dictionary.generationRules, activeBlock.triggerIds, activeBlock.actNoticeIds, dictionary.triggers, dictionary.actNotices),
+    [dictionary.generationRules, dictionary.triggers, dictionary.actNotices, activeBlock.triggerIds, activeBlock.actNoticeIds],
   );
 
   function toggleId(field: "triggerIds" | "actNoticeIds", id: string) {
@@ -498,19 +502,34 @@ function SuggestionList({ rules, dictionary, activeDomainId, onApply }: {
 }
 
 function findSuggestedAction(dictionary: SupportPlanDictionary, domainId: string, rule: GenerationRule) {
-  const byIds = dictionary.actions.find((item) => item.domainIds.includes(domainId) && rule.suggestedActionIds?.includes(item.id));
+  const byIds = findPreferredByDomain(dictionary.actions, domainId, (item) => rule.suggestedActionIds?.includes(item.id) ?? false);
   if (byIds) return byIds;
   const shortGoal = rule.suggestedShortGoal?.trim();
   if (!shortGoal) return undefined;
-  return dictionary.actions.find((item) => item.domainIds.includes(domainId) && (item.shortGoal === shortGoal || item.label.includes(shortGoal) || shortGoal.includes(item.label)));
+  return findPreferredByDomain(dictionary.actions, domainId, (item) => item.shortGoal === shortGoal || item.label.includes(shortGoal) || shortGoal.includes(item.label));
 }
 
 function findSuggestedSupport(dictionary: SupportPlanDictionary, domainId: string, rule: GenerationRule): StaffSupportEntry | undefined {
-  const byIds = dictionary.staffSupports.find((item) => item.domainIds.includes(domainId) && rule.suggestedSupportIds?.includes(item.id));
+  const byIds = findPreferredByDomain(dictionary.staffSupports, domainId, (item) => rule.suggestedSupportIds?.includes(item.id) ?? false);
   if (byIds) return byIds;
-  const operation = rule.suggestedSupportOperation?.trim();
-  if (!operation) return undefined;
-  return dictionary.staffSupports.find((item) => item.domainIds.includes(domainId) && supportMatches(item, operation));
+  const operations = [rule.suggestedSupportOperation, ...(rule.triggerLabels ?? []), ...(rule.actNoticeLabels ?? []), rule.description]
+    .map((text) => text?.trim())
+    .filter(Boolean) as string[];
+  if (!operations.length) return undefined;
+
+  const rankedSupports = dictionary.staffSupports
+    .map((support) => ({
+      support,
+      score: operations.reduce((total, operation) => total + supportMatchScore(support, operation), 0),
+    }))
+    .filter((item) => item.score > 0)
+    .sort((a, b) => {
+      const domainDiff = Number(b.support.domainIds.includes(domainId)) - Number(a.support.domainIds.includes(domainId));
+      if (domainDiff) return domainDiff;
+      return b.score - a.score;
+    });
+
+  return rankedSupports[0]?.support ?? dictionary.staffSupports.find((support) => support.domainIds.includes(domainId)) ?? dictionary.staffSupports[0];
 }
 
 function supportMatches(support: StaffSupportEntry, operation: string): boolean {
@@ -522,6 +541,14 @@ function supportMatches(support: StaffSupportEntry, operation: string): boolean 
     const matched = tokens.filter((token) => candidate.includes(token)).length;
     return matched >= Math.min(2, tokens.length);
   });
+}
+
+function supportMatchScore(support: StaffSupportEntry, operation: string): number {
+  return supportMatches(support, operation) ? 1 : 0;
+}
+
+function findPreferredByDomain<T extends { domainIds: string[] }>(items: T[], domainId: string, predicate: (item: T) => boolean): T | undefined {
+  return items.find((item) => item.domainIds.includes(domainId) && predicate(item)) ?? items.find(predicate);
 }
 
 function keywordTokens(text: string): string[] {
