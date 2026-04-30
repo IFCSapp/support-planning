@@ -13,6 +13,7 @@ const DICTIONARY_STORAGE_KEY = "support-plan-navi-dictionary";
 
 export default function App() {
   const [dictionary, setDictionary] = useState<SupportPlanDictionary | null>(null);
+  const [standardDictionary, setStandardDictionary] = useState<SupportPlanDictionary | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [route, setRoute] = useState(window.location.hash.replace(/^#/, "") || "/");
   const [toast, setToast] = useState("");
@@ -22,6 +23,7 @@ export default function App() {
     loadDictionary()
       .then(async (loaded) => {
         const savedDictionary = localStorage.getItem(DICTIONARY_STORAGE_KEY);
+        setStandardDictionary(loaded);
         setDictionary(savedDictionary ? JSON.parse(savedDictionary) as SupportPlanDictionary : loaded);
         await saveSetting("dictionaryVersion", loaded.version);
         await saveSetting("lastOpenedAt", new Date().toISOString());
@@ -64,6 +66,11 @@ export default function App() {
     localStorage.setItem(DICTIONARY_STORAGE_KEY, JSON.stringify(nextDictionary));
   }
 
+  function resetDictionary() {
+    if (!standardDictionary) return;
+    updateDictionary(standardDictionary);
+  }
+
   const editId = useMemo(() => route.match(/^\/plans\/([^/]+)\/edit$/)?.[1], [route]);
   const isPlanDetailRoute = /^\/plans\/[^/]+$/.test(route) && route !== "/plans/new";
 
@@ -91,7 +98,7 @@ export default function App() {
       {route === "/plans/new" && <PlanWizard dictionary={dictionary} onNavigate={navigate} onCopied={copied} onHeaderChange={setWorkflowHeader} />}
       {editId && <PlanWizard dictionary={dictionary} editId={editId} onNavigate={navigate} onCopied={copied} onHeaderChange={setWorkflowHeader} />}
       {(route === "/plans" || isPlanDetailRoute) && <PlanList route={route} dictionary={dictionary} onNavigate={navigate} onCopied={copied} />}
-      {route === "/dictionary" && <DictionaryPage dictionary={dictionary} onNavigate={navigate} onChange={updateDictionary} />}
+      {route === "/dictionary" && <DictionaryPage dictionary={dictionary} standardDictionary={standardDictionary ?? dictionary} onNavigate={navigate} onChange={updateDictionary} onReset={resetDictionary} />}
       {route === "/settings" && <SettingsPage dictionaryVersion={dictionary.version} onNavigate={navigate} />}
       {route === "/about" && <About dictionaryVersion={dictionary.version} onNavigate={navigate} />}
       <div className="sr-only" aria-live="polite">{toast}</div>
@@ -100,13 +107,13 @@ export default function App() {
   );
 }
 
-function DictionaryPage({ dictionary, onNavigate, onChange }: { dictionary: SupportPlanDictionary; onNavigate: (route: string) => void; onChange: (dictionary: SupportPlanDictionary) => void }) {
+function DictionaryPage({ dictionary, standardDictionary, onNavigate, onChange, onReset }: { dictionary: SupportPlanDictionary; standardDictionary: SupportPlanDictionary; onNavigate: (route: string) => void; onChange: (dictionary: SupportPlanDictionary) => void; onReset: () => void }) {
   return (
     <>
       <div className="page button-row no-print">
         <button onClick={() => onNavigate("/")}>ホームへ戻る</button>
       </div>
-      <DictionaryViewer dictionary={dictionary} onChange={onChange} />
+      <DictionaryViewer dictionary={dictionary} standardDictionary={standardDictionary} onChange={onChange} onReset={onReset} />
     </>
   );
 }

@@ -54,7 +54,7 @@ export function generateStaffSupportText(support?: StaffSupportEntry): string {
   const ending = support.ending ?? "取り組みやすくなるよう支援します";
   const lead = support.lead ?? normalizeSupportLabel(support.label);
   const subject = support.subject ?? "職員は";
-  const connector = support.connector ?? "を行い、";
+  const connector = support.connector ?? "、";
   return ensureJapanesePeriod(`${subject}、${lead}${connector}${ending}`);
 }
 

@@ -924,6 +924,109 @@ textarea {
   font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
 }
 
+.dictionary-preview {
+  display: grid;
+  gap: 0.3rem;
+  border: 1px solid #99f6e4;
+  border-radius: 8px;
+  background: #f0fdfa;
+  padding: 0.75rem;
+}
+
+.dictionary-preview p {
+  margin: 0;
+  line-height: 1.65;
+}
+
+.dictionary-check {
+  margin-bottom: 1rem;
+}
+
+.dictionary-check ul {
+  margin: 0.5rem 0 0;
+  padding-left: 1.25rem;
+}
+
+.dictionary-check li {
+  margin: 0.25rem 0;
+}
+
+.dictionary-check .error {
+  color: #b91c1c;
+}
+
+.dictionary-check .warning {
+  color: #9a3412;
+}
+
+.dictionary-log {
+  margin-top: 1rem;
+}
+
+.dictionary-log details {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 0.65rem 0.75rem;
+}
+
+.dictionary-log summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.dictionary-log pre {
+  overflow: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+  padding: 0.75rem;
+  white-space: pre-wrap;
+}
+
+.multi-id-selector {
+  display: grid;
+  gap: 0.6rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 0.75rem;
+}
+
+.multi-id-selector legend {
+  color: #475569;
+  font-weight: 700;
+  padding: 0 0.25rem;
+}
+
+.multi-id-selector > div {
+  display: grid;
+  gap: 0.4rem;
+  max-height: 240px;
+  overflow: auto;
+}
+
+.multi-id-selector label {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.1rem 0.5rem;
+  align-items: center;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 0.45rem 0.55rem;
+  font-weight: 400;
+}
+
+.multi-id-selector input[type="checkbox"] {
+  grid-row: span 2;
+  width: 1rem;
+  min-height: 1rem;
+}
+
+.multi-id-selector small {
+  grid-column: 2;
+}
+
 .domain-selector {
   display: flex;
   flex-wrap: wrap;

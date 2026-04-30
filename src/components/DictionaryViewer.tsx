@@ -11,14 +11,21 @@ import type {
   TriggerEntry,
 } from "../types/dictionary";
 import { normalizeDictionary } from "../data/dictionaryLoader";
+import { generateActionText, generateDirectionText, generateStaffSupportText } from "../logic/generateTexts";
 
 type TabKey = "domains" | "directions" | "situations" | "actions" | "staffSupports" | "triggers" | "actNotices" | "generationRules";
 type EditableEntry = { id: string; label?: string; description?: string };
+type DictionaryChangeLog = { at: string; category: string; id: string; before: unknown; after: unknown };
+type DictionaryIssue = { level: "error" | "warning"; message: string };
 
 type Props = {
   dictionary: SupportPlanDictionary;
+  standardDictionary: SupportPlanDictionary;
   onChange: (dictionary: SupportPlanDictionary) => void;
+  onReset: () => void;
 };
+
+const CHANGE_LOG_KEY = "support-plan-navi-dictionary-change-log";
 
 const tabs: Array<[TabKey, string]> = [
   ["domains", "支援領域"],
@@ -31,11 +38,13 @@ const tabs: Array<[TabKey, string]> = [
   ["generationRules", "支援候補ルール"],
 ];
 
-export default function DictionaryViewer({ dictionary, onChange }: Props) {
+export default function DictionaryViewer({ dictionary, standardDictionary, onChange, onReset }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [activeTab, setActiveTab] = useState<TabKey>("domains");
   const [query, setQuery] = useState("");
   const [message, setMessage] = useState("");
+  const [issues, setIssues] = useState<DictionaryIssue[]>([]);
+  const [changeLog, setChangeLog] = useState<DictionaryChangeLog[]>(() => loadChangeLog());
 
   const items = useMemo(() => {
     const source = dictionary[activeTab] as EditableEntry[];
@@ -44,20 +53,31 @@ export default function DictionaryViewer({ dictionary, onChange }: Props) {
     return source.filter((item) => [item.id, item.label, item.description].filter(Boolean).some((value) => value?.includes(keyword)));
   }, [activeTab, dictionary, query]);
 
+  function commit(nextDictionary: SupportPlanDictionary, category: string, id: string, before: unknown, after: unknown) {
+    onChange(nextDictionary);
+    const nextLog = [{ at: new Date().toISOString(), category, id, before, after }, ...changeLog].slice(0, 100);
+    setChangeLog(nextLog);
+    localStorage.setItem(CHANGE_LOG_KEY, JSON.stringify(nextLog));
+  }
+
   function updateCollection<T extends { id: string }>(key: TabKey, id: string, patch: Partial<T>) {
-    onChange({ ...dictionary, [key]: (dictionary[key] as T[]).map((item) => item.id === id ? { ...item, ...patch } : item) });
+    const before = (dictionary[key] as T[]).find((item) => item.id === id);
+    const nextItems = (dictionary[key] as T[]).map((item) => item.id === id ? { ...item, ...patch } : item);
+    const after = nextItems.find((item) => item.id === id);
+    commit({ ...dictionary, [key]: nextItems }, key, id, before, after);
   }
 
   function addEntry() {
     const id = `${activeTab}_${Date.now()}`;
     const firstDomainId = dictionary.domains[0]?.id ?? "";
     const next = createEntry(activeTab, id, firstDomainId);
-    onChange({ ...dictionary, [activeTab]: [...(dictionary[activeTab] as unknown[]), next] });
+    commit({ ...dictionary, [activeTab]: [...(dictionary[activeTab] as unknown[]), next] }, activeTab, id, null, next);
     setQuery("");
   }
 
   function removeEntry(id: string) {
-    onChange({ ...dictionary, [activeTab]: (dictionary[activeTab] as EditableEntry[]).filter((item) => item.id !== id) });
+    const before = (dictionary[activeTab] as EditableEntry[]).find((item) => item.id === id);
+    commit({ ...dictionary, [activeTab]: (dictionary[activeTab] as EditableEntry[]).filter((item) => item.id !== id) }, activeTab, id, before, null);
   }
 
   function exportDictionary() {
@@ -75,13 +95,28 @@ export default function DictionaryViewer({ dictionary, onChange }: Props) {
     if (!file) return;
     try {
       const parsed = JSON.parse(await file.text()) as Record<string, unknown>;
-      onChange(normalizeImportedDictionary(parsed, dictionary));
+      const nextDictionary = normalizeImportedDictionary(parsed, dictionary);
+      commit(nextDictionary, "dictionary", "import", dictionary, nextDictionary);
       setMessage("辞書JSONを読み込みました。");
     } catch {
       setMessage("辞書JSONを読み込めませんでした。");
     } finally {
       if (fileRef.current) fileRef.current.value = "";
     }
+  }
+
+  function resetToStandard() {
+    onReset();
+    const nextLog = [{ at: new Date().toISOString(), category: "dictionary", id: "reset-standard", before: dictionary, after: standardDictionary }, ...changeLog].slice(0, 100);
+    setChangeLog(nextLog);
+    localStorage.setItem(CHANGE_LOG_KEY, JSON.stringify(nextLog));
+    setMessage("標準辞書に戻しました。");
+  }
+
+  function runDictionaryCheck() {
+    const nextIssues = checkDictionary(dictionary);
+    setIssues(nextIssues);
+    setMessage(nextIssues.length ? `${nextIssues.length}件の確認項目があります。` : "辞書チェックで問題は見つかりませんでした。");
   }
 
   return (
@@ -100,12 +135,22 @@ export default function DictionaryViewer({ dictionary, onChange }: Props) {
       <div className="panel dictionary-actions">
         <div className="button-row">
           <button className="primary" type="button" onClick={addEntry}>現在のタブに追加</button>
-          <button type="button" onClick={exportDictionary}>辞書を書き出す</button>
-          <button type="button" onClick={() => fileRef.current?.click()}>辞書を読み込む</button>
+          <button type="button" onClick={resetToStandard}>標準辞書に戻す</button>
+          <button type="button" onClick={exportDictionary}>編集済み辞書を書き出す</button>
+          <button type="button" onClick={() => fileRef.current?.click()}>編集済み辞書を読み込む</button>
+          <button type="button" onClick={runDictionaryCheck}>辞書チェックを実行する</button>
           <input ref={fileRef} className="hidden" type="file" accept="application/json" onChange={(event) => importDictionary(event.target.files?.[0])} />
         </div>
         {message && <p className="toast-inline">{message}</p>}
       </div>
+      {issues.length > 0 && (
+        <section className="panel dictionary-check">
+          <h2>辞書チェック結果</h2>
+          <ul>
+            {issues.map((issue, index) => <li key={index} className={issue.level}>{issue.message}</li>)}
+          </ul>
+        </section>
+      )}
       <div className="dictionary-toolbar">
         <div className="tab-row" role="tablist" aria-label="辞書カテゴリ">
           {tabs.map(([key, label]) => (
@@ -150,6 +195,19 @@ export default function DictionaryViewer({ dictionary, onChange }: Props) {
         ))}
         {!items.length && <p className="muted">該当する項目はありません。</p>}
       </div>
+      <section className="panel dictionary-log">
+        <h2>変更ログ</h2>
+        {changeLog.length ? (
+          <div className="list">
+            {changeLog.slice(0, 20).map((entry, index) => (
+              <details key={`${entry.at}-${index}`}>
+                <summary>{new Date(entry.at).toLocaleString("ja-JP")} / {entry.category} / {entry.id}</summary>
+                <pre>{JSON.stringify({ before: entry.before, after: entry.after }, null, 2)}</pre>
+              </details>
+            ))}
+          </div>
+        ) : <p className="muted">まだ変更はありません。</p>}
+      </section>
     </section>
   );
 }
@@ -178,6 +236,8 @@ function VocabularyEditor<T extends DirectionEntry | SituationEntry>({ kind, ite
       <label>完成文を直接指定<textarea value={item.sentence ?? ""} onChange={(event) => onChange({ sentence: event.target.value } as Partial<T>)} placeholder="空欄なら下の語尾・接続を使って生成します" /></label>
       {kind === "direction" && <label>方向性の語尾<input value={(item as DirectionEntry).ending ?? "ましょう"} onChange={(event) => onChange(({ ending: event.target.value } as unknown) as Partial<T>)} placeholder="ましょう" /></label>}
       {kind === "situation" && <label>場面と行動をつなぐ語<input value={(item as SituationEntry).sentenceConnector ?? "は"} onChange={(event) => onChange(({ sentenceConnector: event.target.value } as unknown) as Partial<T>)} placeholder="は" /></label>}
+      {kind === "direction" && <Preview label="生成文" text={generateDirectionText(item as DirectionEntry)} />}
+      {kind === "situation" && <Preview label="接続プレビュー" text={`${item.label}${(item as SituationEntry).sentenceConnector ?? "は"}、質問内容を一文でメモしてみましょう。`} />}
       <label>検索タグ<input value={(item.tags ?? []).join(", ")} onChange={(event) => onChange({ tags: csvToArray(event.target.value) } as Partial<T>)} /></label>
     </article>
   );
@@ -193,6 +253,7 @@ function ActionEditor({ item, dictionary, onChange, onRemove }: { item: ActionEn
       <label>短期目標<input value={item.shortGoal ?? ""} onChange={(event) => onChange({ shortGoal: event.target.value })} /></label>
       <label>行動のて形<input value={item.teForm ?? ""} onChange={(event) => onChange({ teForm: event.target.value })} placeholder="例: 手順表を見て" /></label>
       <label>行動文の語尾<input value={item.actionEnding ?? "みましょう"} onChange={(event) => onChange({ actionEnding: event.target.value })} placeholder="みましょう" /></label>
+      <Preview label="生成文" text={generateActionText(sampleSituationFor(item, dictionary), item)} />
       <label>検索タグ<input value={(item.tags ?? []).join(", ")} onChange={(event) => onChange({ tags: csvToArray(event.target.value) })} /></label>
     </article>
   );
@@ -207,8 +268,9 @@ function SupportEditor({ item, dictionary, onChange, onRemove }: { item: StaffSu
       <label>完成文を直接指定<textarea value={item.sentence ?? ""} onChange={(event) => onChange({ sentence: event.target.value })} placeholder="空欄なら下の主語・接続・語尾を使って生成します" /></label>
       <label>支援文の主語<input value={item.subject ?? "職員は"} onChange={(event) => onChange({ subject: event.target.value })} placeholder="職員は" /></label>
       <label>支援操作<input value={item.lead ?? ""} onChange={(event) => onChange({ lead: event.target.value })} placeholder="例: 手順表を一緒に確認し" /></label>
-      <label>支援操作と語尾の接続<input value={item.connector ?? "を行い、"} onChange={(event) => onChange({ connector: event.target.value })} placeholder="を行い、" /></label>
+      <label>支援操作と語尾の接続<input value={item.connector ?? "、"} onChange={(event) => onChange({ connector: event.target.value })} placeholder="、" /></label>
       <label>支援文の語尾<input value={item.ending ?? ""} onChange={(event) => onChange({ ending: event.target.value })} placeholder="取り組みやすくなるよう支援します" /></label>
+      <Preview label="生成文" text={generateStaffSupportText(item)} />
       <label>検索タグ<input value={(item.tags ?? []).join(", ")} onChange={(event) => onChange({ tags: csvToArray(event.target.value) })} /></label>
     </article>
   );
@@ -230,13 +292,46 @@ function RuleEditor({ item, dictionary, onChange, onRemove }: { item: Generation
     <article className="list-item dictionary-entry">
       <EntryHeader id={item.id} onRemove={onRemove} />
       <label>説明<textarea value={item.description ?? ""} onChange={(event) => onChange({ description: event.target.value })} /></label>
-      <label>先行条件ID<input value={(item.triggerIds ?? []).join(", ")} onChange={(event) => onChange({ triggerIds: csvToArray(event.target.value) })} placeholder={dictionary.triggers.slice(0, 3).map((entry) => entry.id).join(", ")} /></label>
-      <label>ACT通知ID<input value={(item.actNoticeIds ?? []).join(", ")} onChange={(event) => onChange({ actNoticeIds: csvToArray(event.target.value) })} placeholder={dictionary.actNotices.slice(0, 3).map((entry) => entry.id).join(", ")} /></label>
-      <label>おすすめ行動ID<input value={(item.suggestedActionIds ?? []).join(", ")} onChange={(event) => onChange({ suggestedActionIds: csvToArray(event.target.value) })} /></label>
-      <label>おすすめ職員支援ID<input value={(item.suggestedSupportIds ?? []).join(", ")} onChange={(event) => onChange({ suggestedSupportIds: csvToArray(event.target.value) })} /></label>
+      <MultiIdSelector title="このルールを出す条件: 先行条件" items={dictionary.triggers} selectedIds={item.triggerIds ?? []} onChange={(triggerIds) => onChange({ triggerIds })} />
+      <MultiIdSelector title="このルールを出す条件: ACT通知" items={dictionary.actNotices} selectedIds={item.actNoticeIds ?? []} onChange={(actNoticeIds) => onChange({ actNoticeIds })} />
+      <MultiIdSelector title="このルールで出す候補: 行動" items={dictionary.actions} selectedIds={item.suggestedActionIds ?? []} onChange={(suggestedActionIds) => onChange({ suggestedActionIds })} />
+      <MultiIdSelector title="このルールで出す候補: 職員支援" items={dictionary.staffSupports} selectedIds={item.suggestedSupportIds ?? []} onChange={(suggestedSupportIds) => onChange({ suggestedSupportIds })} />
       <label>短期目標案<input value={item.suggestedShortGoal ?? ""} onChange={(event) => onChange({ suggestedShortGoal: event.target.value })} /></label>
       <label>支援アイデアに表示する説明<textarea value={item.suggestedSupportOperation ?? ""} onChange={(event) => onChange({ suggestedSupportOperation: event.target.value })} /></label>
     </article>
+  );
+}
+
+function Preview({ label, text }: { label: string; text: string }) {
+  return (
+    <div className="dictionary-preview">
+      <strong>{label}</strong>
+      <p>{text || "生成に必要な語彙を入力してください。"}</p>
+    </div>
+  );
+}
+
+function MultiIdSelector<T extends { id: string; label: string }>({ title, items, selectedIds, onChange }: { title: string; items: T[]; selectedIds: string[]; onChange: (ids: string[]) => void }) {
+  const [query, setQuery] = useState("");
+  const visibleItems = items.filter((item) => !query.trim() || item.label.includes(query) || item.id.includes(query)).slice(0, 80);
+  return (
+    <fieldset className="multi-id-selector">
+      <legend>{title}</legend>
+      <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="検索" />
+      <div>
+        {visibleItems.map((item) => (
+          <label key={item.id}>
+            <input
+              type="checkbox"
+              checked={selectedIds.includes(item.id)}
+              onChange={() => onChange(selectedIds.includes(item.id) ? selectedIds.filter((id) => id !== item.id) : [...selectedIds, item.id])}
+            />
+            <span>{item.label}</span>
+            <small>{item.id}</small>
+          </label>
+        ))}
+      </div>
+    </fieldset>
   );
 }
 
@@ -266,7 +361,7 @@ function createEntry(tab: TabKey, id: string, domainId: string) {
   if (tab === "directions") return { id, domainIds: domainId ? [domainId] : [], label: "新しい方向性", sentence: "", ending: "ましょう" } satisfies DirectionEntry;
   if (tab === "situations") return { id, domainIds: domainId ? [domainId] : [], label: "新しい場面", sentence: "", sentenceConnector: "は" } satisfies SituationEntry;
   if (tab === "actions") return { id, domainIds: domainId ? [domainId] : [], label: "新しい行動", sentence: "", teForm: "", actionEnding: "みましょう" } satisfies ActionEntry;
-  if (tab === "staffSupports") return { id, domainIds: domainId ? [domainId] : [], label: "新しい職員支援", sentence: "", subject: "職員は", lead: "", connector: "を行い、", ending: "支援します" } satisfies StaffSupportEntry;
+  if (tab === "staffSupports") return { id, domainIds: domainId ? [domainId] : [], label: "新しい職員支援", sentence: "", subject: "職員は", lead: "", connector: "、", ending: "支援します" } satisfies StaffSupportEntry;
   return { id, domainIds: domainId ? [domainId] : [], label: "新しい語彙", sentence: "" };
 }
 
@@ -280,4 +375,80 @@ function normalizeImportedDictionary(imported: Record<string, unknown>, fallback
 
 function csvToArray(value: string): string[] {
   return value.split(",").map((item) => item.trim()).filter(Boolean);
+}
+
+function sampleSituationFor(action: ActionEntry, dictionary: SupportPlanDictionary): SituationEntry {
+  return dictionary.situations.find((item) => item.domainIds.some((id) => action.domainIds.includes(id))) ?? {
+    id: "preview_situation",
+    domainIds: action.domainIds,
+    label: "作業中に分からないことが出たとき",
+    sentenceConnector: "は",
+  };
+}
+
+function loadChangeLog(): DictionaryChangeLog[] {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(CHANGE_LOG_KEY) ?? "[]");
+    return Array.isArray(parsed) ? parsed as DictionaryChangeLog[] : [];
+  } catch {
+    return [];
+  }
+}
+
+function checkDictionary(dictionary: SupportPlanDictionary): DictionaryIssue[] {
+  const issues: DictionaryIssue[] = [];
+  const collections = [
+    ["支援領域", dictionary.domains],
+    ["方向性", dictionary.directions],
+    ["場面", dictionary.situations],
+    ["行動", dictionary.actions],
+    ["職員支援", dictionary.staffSupports],
+    ["先行条件", dictionary.triggers],
+    ["ACT通知", dictionary.actNotices],
+    ["支援候補ルール", dictionary.generationRules],
+  ] as const;
+  const allIds = new Map<string, string[]>();
+  collections.forEach(([label, items]) => {
+    items.forEach((item) => allIds.set(item.id, [...(allIds.get(item.id) ?? []), label]));
+  });
+  allIds.forEach((labels, id) => {
+    if (labels.length > 1) issues.push({ level: "error", message: `IDが重複しています: ${id} (${labels.join(" / ")})` });
+  });
+
+  const vocabularies = [
+    ["方向性", dictionary.directions],
+    ["場面", dictionary.situations],
+    ["行動", dictionary.actions],
+    ["職員支援", dictionary.staffSupports],
+  ] as const;
+  vocabularies.forEach(([label, items]) => {
+    items.filter((item) => !item.domainIds.length).forEach((item) => issues.push({ level: "error", message: `${label} ${item.id} の所属支援領域が空です。` }));
+  });
+
+  dictionary.directions.forEach((item) => {
+    const text = generateDirectionText(item);
+    if ([item.label, item.sentence].filter(Boolean).some((value) => value?.includes("本人は"))) issues.push({ level: "warning", message: `方向性 ${item.id} に「本人は」が入っています。` });
+    if (!text.endsWith("ましょう。")) issues.push({ level: "warning", message: `方向性 ${item.id} の生成文が「ましょう。」で終わっていません。` });
+  });
+  dictionary.actions.forEach((item) => {
+    if (!item.teForm?.trim() && !item.sentence?.trim()) issues.push({ level: "warning", message: `行動 ${item.id} に teForm がありません。` });
+  });
+  dictionary.staffSupports.forEach((item) => {
+    if (!item.lead?.trim() && !item.sentence?.trim()) issues.push({ level: "warning", message: `職員支援 ${item.id} に lead がありません。` });
+    if (!item.ending?.trim() && !item.sentence?.trim()) issues.push({ level: "warning", message: `職員支援 ${item.id} に ending がありません。` });
+    const text = generateStaffSupportText(item);
+    if (!text.startsWith("職員は") || !text.endsWith("支援します。")) issues.push({ level: "warning", message: `職員支援 ${item.id} の生成文が「職員は」で始まり「支援します。」で終わる形ではありません。` });
+  });
+
+  const triggerIds = new Set(dictionary.triggers.map((item) => item.id));
+  const noticeIds = new Set(dictionary.actNotices.map((item) => item.id));
+  const actionIds = new Set(dictionary.actions.map((item) => item.id));
+  const supportIds = new Set(dictionary.staffSupports.map((item) => item.id));
+  dictionary.generationRules.forEach((rule) => {
+    (rule.triggerIds ?? []).filter((id) => !triggerIds.has(id)).forEach((id) => issues.push({ level: "error", message: `支援候補ルール ${rule.id} が存在しない先行条件ID ${id} を参照しています。` }));
+    (rule.actNoticeIds ?? []).filter((id) => !noticeIds.has(id)).forEach((id) => issues.push({ level: "error", message: `支援候補ルール ${rule.id} が存在しないACT通知ID ${id} を参照しています。` }));
+    (rule.suggestedActionIds ?? []).filter((id) => !actionIds.has(id)).forEach((id) => issues.push({ level: "error", message: `支援候補ルール ${rule.id} が削除済みまたは存在しない行動ID ${id} を参照しています。` }));
+    (rule.suggestedSupportIds ?? []).filter((id) => !supportIds.has(id)).forEach((id) => issues.push({ level: "error", message: `支援候補ルール ${rule.id} が削除済みまたは存在しない職員支援ID ${id} を参照しています。` }));
+  });
+  return issues;
 }
