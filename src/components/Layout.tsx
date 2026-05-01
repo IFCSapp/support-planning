@@ -6,6 +6,11 @@ export type WorkflowHeader = {
   steps: string[];
   currentStep: number;
   onStepChange: (step: number) => void;
+  onPrevious?: () => void;
+  onNext?: () => void;
+  onComplete?: () => void;
+  previousDisabled?: boolean;
+  nextLabel?: string;
 };
 
 type Props = {
@@ -52,6 +57,40 @@ export default function Layout({ children, route, workflowHeader, onNavigate, on
                 </li>
               ))}
             </ol>
+            <div className="workflow-nav-actions no-print" aria-label="作成画面の操作">
+              {workflowHeader.onPrevious && (
+                <button
+                  type="button"
+                  className="workflow-nav-button"
+                  disabled={workflowHeader.previousDisabled}
+                  onClick={workflowHeader.onPrevious}
+                >
+                  戻る
+                </button>
+              )}
+
+              {workflowHeader.currentStep < workflowHeader.steps.length - 1 ? (
+                workflowHeader.onNext && (
+                  <button
+                    type="button"
+                    className="workflow-nav-button primary"
+                    onClick={workflowHeader.onNext}
+                  >
+                    {workflowHeader.nextLabel ?? "次へ"}
+                  </button>
+                )
+              ) : (
+                workflowHeader.onComplete && (
+                  <button
+                    type="button"
+                    className="workflow-nav-button primary"
+                    onClick={workflowHeader.onComplete}
+                  >
+                    保存して出力
+                  </button>
+                )
+              )}
+            </div>
           </div>
         )}
 
@@ -61,11 +100,11 @@ export default function Layout({ children, route, workflowHeader, onNavigate, on
           </button>
           {menuOpen && (
             <nav className="nav" aria-label="主要メニュー">
-            {items.map(([href, label]) => (
-              <button key={href} className={route === href ? "nav-item active" : "nav-item"} onClick={() => { onNavigate(href); setMenuOpen(false); }}>
-                {label}
-              </button>
-            ))}
+              {items.map(([href, label]) => (
+                <button key={href} className={route === href ? "nav-item active" : "nav-item"} onClick={() => { onNavigate(href); setMenuOpen(false); }}>
+                  {label}
+                </button>
+              ))}
             </nav>
           )}
         </div>

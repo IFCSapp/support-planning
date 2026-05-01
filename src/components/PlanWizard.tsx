@@ -84,9 +84,14 @@ export default function PlanWizard({ dictionary, editId, onNavigate, onCopied, o
       steps,
       currentStep: step,
       onStepChange: setStep,
+      onPrevious: () => setStep((value) => Math.max(0, value - 1)),
+      onNext: () => setStep((value) => Math.min(steps.length - 1, value + 1)),
+      onComplete: complete,
+      previousDisabled: step === 0,
+      nextLabel: "次へ",
     });
     return () => onHeaderChange?.(null);
-  }, [editId, onHeaderChange, saveState, step]);
+  }, [editId, onHeaderChange, saveState, step, complete]);
 
   useEffect(() => {
     if (step !== 2 || draft.blocks.length) return;
@@ -192,15 +197,6 @@ export default function PlanWizard({ dictionary, editId, onNavigate, onCopied, o
         </ol>
       </div>
 
-      <div className="wizard-actions top-actions no-print">
-        <button disabled={step === 0} onClick={() => setStep((value) => Math.max(0, value - 1))}>戻る</button>
-        {step < steps.length - 1 ? (
-          <button className="primary" onClick={() => setStep((value) => Math.min(steps.length - 1, value + 1))}>次へ</button>
-        ) : (
-          <button className="primary" onClick={complete}>保存して完了</button>
-        )}
-      </div>
-
       {step === 0 && (
         <div className="stack">
           <StepPurpose draft={draft} updateDraft={updateDraft} />
@@ -213,15 +209,7 @@ export default function PlanWizard({ dictionary, editId, onNavigate, onCopied, o
       )}
       {step === 3 && <ConfirmStep blocks={draft.blocks} onCopied={onCopied} />}
       {step === 4 && <OutputStep draft={draft} complete={complete} onCopied={onCopied} />}
-
-      <div className="wizard-actions no-print">
-        <button disabled={step === 0} onClick={() => setStep((value) => Math.max(0, value - 1))}>戻る</button>
-        {step < steps.length - 1 ? (
-          <button className="primary" onClick={() => setStep((value) => Math.min(steps.length - 1, value + 1))}>次へ</button>
-        ) : (
-          <button className="primary" onClick={complete}>保存して完了</button>
-        )}
-      </div>
+      
     </section>
   );
 }
