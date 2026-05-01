@@ -23,6 +23,7 @@ type Props = {
   standardDictionary: SupportPlanDictionary;
   onChange: (dictionary: SupportPlanDictionary) => void;
   onReset: () => void;
+  onUpdateToStandard: () => void;
 };
 
 const CHANGE_LOG_KEY = "support-plan-navi-dictionary-change-log";
@@ -38,13 +39,20 @@ const tabs: Array<[TabKey, string]> = [
   ["generationRules", "支援候補ルール"],
 ];
 
-export default function DictionaryViewer({ dictionary, standardDictionary, onChange, onReset }: Props) {
+export default function DictionaryViewer({
+  dictionary,
+  standardDictionary,
+  onChange,
+  onReset,
+  onUpdateToStandard,
+}: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [activeTab, setActiveTab] = useState<TabKey>("domains");
   const [query, setQuery] = useState("");
   const [message, setMessage] = useState("");
   const [issues, setIssues] = useState<DictionaryIssue[]>([]);
   const [changeLog, setChangeLog] = useState<DictionaryChangeLog[]>(() => loadChangeLog());
+  const hasStandardDictionaryUpdate = dictionary.version !== standardDictionary.version;
 
   const items = useMemo(() => {
     const source = dictionary[activeTab] as EditableEntry[];
@@ -132,10 +140,33 @@ export default function DictionaryViewer({ dictionary, standardDictionary, onCha
         <span>材料 {dictionary.triggers.length + dictionary.actNotices.length}</span>
         <span>支援候補ルール {dictionary.generationRules.length}</span>
       </div>
+      {hasStandardDictionaryUpdate && (
+        <section className="panel dictionary-check">
+           <h2>標準辞書が更新されています</h2>
+           <p className="muted">
+             現在の辞書バージョンは {dictionary.version} です。標準辞書バージョン {standardDictionary.version} を取り込めます。
+             取り込む前に、現在の編集済み辞書は端末内にバックアップされます。
+           </p>
+           <div className="button-row">
+             <button
+               type="button"
+               className="primary"
+               onClick={() => {
+                 if (!confirm("現在の編集済み辞書をバックアップして、標準辞書を反映しますか？")) return;
+                 onUpdateToStandard();
+                 setMessage("標準辞書を反映しました。以前の辞書は端末内にバックアップされています。");
+               }}
+              >
+                標準辞書を反映する
+             </button>
+           </div>
+        </section>
+     )}
+
       <div className="panel dictionary-actions">
         <div className="button-row">
           <button className="primary" type="button" onClick={addEntry}>現在のタブに追加</button>
-          <button type="button" onClick={resetToStandard}>標準辞書に戻す</button>
+          <button type="button" onClick={resetToStandard}>編集を破棄して標準辞書に戻す</button>
           <button type="button" onClick={exportDictionary}>編集済み辞書を書き出す</button>
           <button type="button" onClick={() => fileRef.current?.click()}>編集済み辞書を読み込む</button>
           <button type="button" onClick={runDictionaryCheck}>辞書チェックを実行する</button>
