@@ -44,19 +44,6 @@ export default function Layout({ children, route, workflowHeader, onNavigate, on
               <span>{workflowHeader.status}</span>
               <strong>{workflowHeader.title}</strong>
             </div>
-            <ol className="workflow-steps">
-              {workflowHeader.steps.map((label, index) => (
-                <li key={label}>
-                  <button
-                    type="button"
-                    className={index === workflowHeader.currentStep ? "workflow-step current" : index < workflowHeader.currentStep ? "workflow-step done" : "workflow-step"}
-                    onClick={() => workflowHeader.onStepChange(index)}
-                  >
-                    {index + 1}. {label}
-                  </button>
-                </li>
-              ))}
-            </ol>
             <div className="workflow-nav-actions no-print" aria-label="作成画面の操作">
               {workflowHeader.onPrevious && (
                 <button
@@ -91,6 +78,26 @@ export default function Layout({ children, route, workflowHeader, onNavigate, on
                 )
               )}
             </div>
+
+            <ol className="workflow-steps">
+              {workflowHeader.steps.map((label, index) => (
+                <li key={label}>
+                  <button
+                    type="button"
+                    className={
+                      index === workflowHeader.currentStep
+                        ? "workflow-step current"
+                        : index < workflowHeader.currentStep
+                          ? "workflow-step done"
+                          : "workflow-step"
+                    }
+                    onClick={() => workflowHeader.onStepChange(index)}
+                  >
+                    {index + 1}. {label}
+                  </button>
+                </li>
+              ))}
+            </ol>
           </div>
         )}
 
