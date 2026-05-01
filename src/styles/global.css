@@ -704,9 +704,12 @@ textarea {
 
 .preview-panel {
   position: sticky;
-  top: 86px;
+  top: 96px;
+  align-self: start;
   display: grid;
   gap: 0.75rem;
+  max-height: calc(100vh - 112px);
+  overflow-y: auto;
 }
 
 .connected-preview {
@@ -1139,10 +1142,6 @@ textarea {
   .topbar {
     display: flex;
     overflow-x: auto;
-  }
-
-  .preview-panel {
-    position: static;
   }
 
   .hope-frame {
