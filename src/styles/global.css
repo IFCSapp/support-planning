@@ -498,6 +498,37 @@ textarea {
   margin-bottom: 1rem;
 }
 
+.selected-domain-preview {
+  display: grid;
+  gap: 0.25rem;
+  border: 2px solid #bfdbfe;
+  border-radius: 8px;
+  background: #eff6ff;
+  padding: 0.75rem;
+}
+
+.selected-domain-preview span {
+  color: #1d4ed8;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.selected-domain-preview strong {
+  color: #64748b;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.selected-domain-preview.filled strong {
+  color: #1d4ed8;
+}
+
+.selected-domain-preview p {
+  margin: 0.15rem 0 0;
+  color: #475569;
+  line-height: 1.5;
+}
+
 .vocab-panel {
   display: grid;
   gap: 0.85rem;
@@ -603,6 +634,54 @@ textarea {
   overflow: visible;
   text-overflow: clip;
   white-space: pre-wrap;
+}
+
+.hope-summary-box {
+  border: 1px solid #99f6e4;
+  border-radius: 8px;
+  background: #f0fdfa;
+  padding: 0.75rem;
+}
+
+.hope-summary-box summary {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  cursor: pointer;
+  font-weight: 800;
+  color: #0f766e;
+  list-style: none;
+}
+
+.hope-summary-box summary::-webkit-details-marker {
+  display: none;
+}
+
+.hope-summary-box summary::before {
+  content: "＋";
+  display: inline-grid;
+  place-items: center;
+  width: 1.45rem;
+  height: 1.45rem;
+  border: 1px solid #5eead4;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #0f766e;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.hope-summary-box[open] summary::before {
+  content: "－";
+}
+
+.hope-summary-box p {
+  margin: 0.65rem 0 0;
+  color: #64748b;
+}
+
+.hope-summary-box .hope-summary-items {
+  margin-top: 0.65rem;
 }
 
 .hope-summary-items b {

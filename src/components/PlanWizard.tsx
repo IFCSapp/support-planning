@@ -625,13 +625,16 @@ function HopeSummary({ hope }: { hope: PersonHope }) {
     ["心配なこと", hope.concerns],
     ["できるようになりたいこと", hope.desiredChanges],
   ].filter((item): item is [string, string] => Boolean(item[1]?.trim()));
+
   const toggleExpanded = (label: string) => {
-    setExpandedKeys((keys) => keys.includes(label) ? keys.filter((key) => key !== label) : [...keys, label]);
+    setExpandedKeys((keys) =>
+      keys.includes(label) ? keys.filter((key) => key !== label) : [...keys, label],
+    );
   };
 
   return (
-    <section className="hope-summary" aria-label="本人の希望">
-      <strong>本人の希望</strong>
+    <details className="hope-summary-box">
+      <summary>本人の希望</summary>
       {items.length > 0 ? (
         <div className="hope-summary-items">
           {items.map(([label, value]) => {
@@ -639,7 +642,9 @@ function HopeSummary({ hope }: { hope: PersonHope }) {
             return (
               <span key={label} className={expanded ? "expanded" : ""}>
                 <b>{label}</b>{value}
-                <button type="button" className="hope-toggle" onClick={() => toggleExpanded(label)}>{expanded ? "閉じる" : "展開"}</button>
+                <button type="button" className="hope-toggle" onClick={() => toggleExpanded(label)}>
+                  {expanded ? "閉じる" : "展開"}
+                </button>
               </span>
             );
           })}
@@ -647,7 +652,7 @@ function HopeSummary({ hope }: { hope: PersonHope }) {
       ) : (
         <p>未入力</p>
       )}
-    </section>
+    </details>
   );
 }
 
@@ -851,8 +856,14 @@ function ConnectedPreview({
   const selectedSituation = dictionary.situations.find((item) => item.id === block.situationId);
   const selectedAction = dictionary.actions.find((item) => item.id === block.actionId);
   const selectedSupport = dictionary.staffSupports.find((item) => item.id === block.staffSupportId);
+  const selectedDomain = dictionary.domains.find((item) => item.id === block.domainId);
   return (
     <section className="preview-panel">
+      <section className={selectedDomain ? "selected-domain-preview filled" : "selected-domain-preview"}>
+        <span>選択済み支援領域</span>
+        <strong>{selectedDomain?.label ?? "未選択"}</strong>
+        {selectedDomain?.description && <p>{selectedDomain.description}</p>}
+      </section>
       <h2>文章プレビュー</h2>
       <div className="selected-vocabulary-summary" aria-label="選択済み語彙">
         <strong>選択済み</strong>
