@@ -440,6 +440,39 @@ function StepVocabularySelect({ dictionary, personHope, blocks, activeBlock, voc
     setQuery("");
   }
 
+  function clearVocabularySelection(field: "directionId" | "situationId" | "actionId" | "staffSupportId") {
+    const patch: Partial<PlanBlock> = { [field]: undefined };
+
+    if (field === "directionId") {
+      patch.directionText = "";
+    }
+
+    if (field === "situationId" || field === "actionId") {
+      patch.actionText = "";
+    }
+
+    if (field === "staffSupportId") {
+      patch.staffSupportText = "";
+    }
+
+    setSelection(activeBlock.id, patch);
+  }
+
+  function clearAllVocabularySelections() {
+    setSelection(activeBlock.id, {
+      directionId: undefined,
+      situationId: undefined,
+      actionId: undefined,
+      staffSupportId: undefined,
+      monitoringId: undefined,
+      directionText: "",
+      actionText: "",
+      staffSupportText: "",
+      monitoringText: "",
+      shortGoal: "",
+    });
+  }
+
   function setIdeaSelection<T extends { id: string; domainIds: string[] }>(field: "actionId" | "staffSupportId", id: string, items: T[]) {
     const selectedItem = items.find((item) => item.id === id);
     const patch: Partial<PlanBlock> = { [field]: id, triggerIds: [], actNoticeIds: [] };
@@ -512,10 +545,54 @@ function StepVocabularySelect({ dictionary, personHope, blocks, activeBlock, voc
           />
         </details>
 
-        <Select label="方向性" value={activeBlock.directionId} items={filtered.directions} onChange={(id) => setVocabularySelection("directionId", id, dictionary.directions)} highlightWhenEmpty />
-        <Select label="場面" value={activeBlock.situationId} items={filtered.situations} onChange={(id) => setVocabularySelection("situationId", id, dictionary.situations)} highlightWhenEmpty />
-        <Select label="行動" value={activeBlock.actionId} items={filtered.actions} onChange={(id) => setVocabularySelection("actionId", id, dictionary.actions)} highlightWhenEmpty />
-        <Select label="職員支援" value={activeBlock.staffSupportId} items={filtered.supports} onChange={(id) => setVocabularySelection("staffSupportId", id, dictionary.staffSupports)} highlightWhenEmpty />
+        <div className="selection-clear-row">
+          <button
+            type="button"
+            className="danger"
+            onClick={() => {
+              if (!confirm("このブロックの選択済み項目をすべてクリアしますか？")) return;
+              clearAllVocabularySelections();
+            }}
+          >
+            選択済み項目をすべてクリア
+          </button>
+        </div>
+
+        <Select
+          label="方向性"
+          value={activeBlock.directionId}
+          items={filtered.directions}
+          onChange={(id) => setVocabularySelection("directionId", id, dictionary.directions)}
+          onClear={() => clearVocabularySelection("directionId")}
+          highlightWhenEmpty
+        />
+
+        <Select
+          label="場面"
+          value={activeBlock.situationId}
+          items={filtered.situations}
+          onChange={(id) => setVocabularySelection("situationId", id, dictionary.situations)}
+          onClear={() => clearVocabularySelection("situationId")}
+          highlightWhenEmpty
+        />
+
+        <Select
+          label="行動"
+          value={activeBlock.actionId}
+          items={filtered.actions}
+          onChange={(id) => setVocabularySelection("actionId", id, dictionary.actions)}
+          onClear={() => clearVocabularySelection("actionId")}
+          highlightWhenEmpty
+        />
+
+        <Select
+          label="職員支援"
+          value={activeBlock.staffSupportId}
+          items={filtered.supports}
+          onChange={(id) => setVocabularySelection("staffSupportId", id, dictionary.staffSupports)}
+          onClear={() => clearVocabularySelection("staffSupportId")}
+          highlightWhenEmpty
+        />
       </div>
       <ConnectedPreview
         block={activeBlock}
@@ -562,16 +639,49 @@ function HopeSummary({ hope }: { hope: PersonHope }) {
   );
 }
 
-function Select<T extends { id: string; label: string }>({ label, value, items, onChange, highlightWhenEmpty = false }: { label: string; value?: string; items: T[]; onChange: (id: string) => void; highlightWhenEmpty?: boolean }) {
+function Select<T extends { id: string; label: string }>({
+  label,
+  value,
+  items,
+  onChange,
+  onClear,
+  highlightWhenEmpty = false,
+}: {
+  label: string;
+  value?: string;
+  items: T[];
+  onChange: (id: string) => void;
+  onClear?: () => void;
+  highlightWhenEmpty?: boolean;
+}) {
   const needsSelection = highlightWhenEmpty && !value;
+
   return (
-    <label className={needsSelection ? "select-field needs-selection" : "select-field"}>{label}
+    <div className={needsSelection ? "select-field needs-selection" : "select-field"}>
+      <div className="select-field-header">
+        <strong>{label}</strong>
+        {value && onClear && (
+          <button type="button" className="mini-clear-button" onClick={onClear}>
+            クリア
+          </button>
+        )}
+      </div>
       <select value={value ?? ""} onChange={(event) => onChange(event.target.value)}>
         <option value="">選択してください</option>
         {items.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
       </select>
-    </label>
+    </div>
   );
+}
+const needsSelection = highlightWhenEmpty && !value;
+return (
+  <label className={needsSelection ? "select-field needs-selection" : "select-field"}>{label}
+    <select value={value ?? ""} onChange={(event) => onChange(event.target.value)}>
+      <option value="">選択してください</option>
+      {items.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
+    </select>
+  </label>
+);
 }
 
 function vocabularyItemMatches(item: { label: string; tags?: string[]; sentence?: string; shortGoal?: string; lead?: string }, keyword: string): boolean {
@@ -738,7 +848,7 @@ function ConnectedPreview({
   return (
     <section className="preview-panel">
       <h2>文章プレビュー</h2>
-            <div className="selected-vocabulary-summary" aria-label="選択済み語彙">
+      <div className="selected-vocabulary-summary" aria-label="選択済み語彙">
         <strong>選択済み</strong>
         <dl>
           <div className={selectedDirection ? "filled" : ""}>

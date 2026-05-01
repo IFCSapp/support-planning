@@ -685,10 +685,43 @@ textarea {
   font-size: 0.9rem;
 }
 
+.selection-clear-row {
+  display: flex;
+  justify-content: flex-end;
+  margin: 0.25rem 0 0.5rem;
+}
+
 .select-field {
+  display: grid;
+  gap: 0.35rem;
   border: 1px solid transparent;
   border-radius: 8px;
   padding: 0.35rem;
+}
+
+.select-field-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.select-field-header strong {
+  font-weight: 700;
+}
+
+.mini-clear-button {
+  min-height: 30px;
+  border-color: #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
+  padding: 0.15rem 0.55rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.mini-clear-button:hover {
+  border-color: #2563eb;
 }
 
 .select-field.needs-selection {
