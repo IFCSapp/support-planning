@@ -1439,6 +1439,32 @@ textarea {
     padding: 0.2rem 0.55rem;
     font-size: 0.86rem;
   }
+
+  select {
+    appearance: auto;
+    -webkit-appearance: menulist;
+    background: #ffffff;
+  }
+
+  .select-field,
+  .select-field.needs-selection {
+    overflow: visible;
+  }
+
+  select:focus,
+  select:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(153, 246, 228, 0.35);
+  }
+
+  .select-field:focus-within {
+    background: transparent;
+  }
+
+  .select-field.needs-selection:focus-within {
+    background: #fffbeb;
+  }
+
 }
 
 .hope-frame,
