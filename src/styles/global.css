@@ -495,9 +495,9 @@ textarea {
   display: none;
 }
 
-.wizard-page > .button-row.no-print:first-child,
-.wizard-page > .wizard-header,
-.wizard-page > .wizard-actions:not(.top-actions) {
+.wizard-page>.button-row.no-print:first-child,
+.wizard-page>.wizard-header,
+.wizard-page>.wizard-actions:not(.top-actions) {
   display: none;
 }
 
@@ -510,7 +510,7 @@ textarea {
   align-items: start;
 }
 
-.vocab-layout > * {
+.vocab-layout>* {
   min-width: 0;
 }
 
@@ -1282,7 +1282,7 @@ textarea {
   padding: 0 0.25rem;
 }
 
-.multi-id-selector > div {
+.multi-id-selector>div {
   display: grid;
   gap: 0.4rem;
   max-height: 240px;
@@ -1364,6 +1364,7 @@ textarea {
 }
 
 @media (max-width: 780px) {
+
   .topbar,
   .wizard-header,
   .vocab-layout,
@@ -1374,23 +1375,85 @@ textarea {
   }
 
   .topbar {
-    display: flex;
-    overflow-x: auto;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 0.4rem;
+    align-items: center;
+    overflow: visible;
   }
 
-  .hope-frame,
-  .hope-summary-box,
-  .preview-panel {
-    position: static;
+  .brand {
+    min-height: 32px;
+    padding: 0.2rem 0.35rem;
+    font-size: 0.9rem;
   }
 
-  .vocabulary-control-row {
-    grid-template-columns: 1fr;
+  .back-button {
+    display: none;
   }
 
-  .vocabulary-clear-all {
-    width: 100%;
+  .workflow-top {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.45rem;
+    align-items: center;
+    border-top: 1px solid #e2e8f0;
+    padding-top: 0.35rem;
   }
+
+  .workflow-current {
+    min-width: 0;
+  }
+
+  .workflow-current span,
+  .workflow-current strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .workflow-nav-actions {
+    justify-content: flex-end;
+    border: 0;
+    padding: 0;
+    gap: 0.35rem;
+  }
+
+  .workflow-nav-button {
+    min-height: 34px;
+    padding: 0.2rem 0.65rem;
+    font-size: 0.86rem;
+  }
+
+  .workflow-steps {
+    display: none;
+  }
+
+  .app-menu {
+    margin-left: 0;
+  }
+
+  .menu-button {
+    min-height: 32px;
+    padding: 0.2rem 0.55rem;
+    font-size: 0.86rem;
+  }
+}
+
+.hope-frame,
+.hope-summary-box,
+.preview-panel {
+  position: static;
+}
+
+.vocabulary-control-row {
+  grid-template-columns: 1fr;
+}
+
+.vocabulary-clear-all {
+  width: 100%;
+}
 }
 
 /* Print */
