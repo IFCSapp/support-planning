@@ -1272,9 +1272,35 @@ textarea {
 }
 
 .idea-box summary {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
   cursor: pointer;
   font-weight: 700;
   color: #0f766e;
+  list-style: none;
+}
+
+.idea-box summary::-webkit-details-marker {
+  display: none;
+}
+
+.idea-box summary::before {
+  content: "＋";
+  display: inline-grid;
+  place-items: center;
+  width: 1.45rem;
+  height: 1.45rem;
+  border: 1px solid #5eead4;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #0f766e;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.idea-box[open] summary::before {
+  content: "－";
 }
 
 .multi-select-block {

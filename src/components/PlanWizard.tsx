@@ -513,7 +513,7 @@ function StepVocabularySelect({ dictionary, personHope, blocks, activeBlock, voc
           </>
         )}
 
-        <details className="idea-box" open>
+        <details className="idea-box">
           <summary>支援アイデアの材料を選ぶ</summary>
           <p className="muted">先行条件とACT通知は、支援候補を出すための補助項目です。計画文にはそのまま入りません。</p>
           <MultiSelect
