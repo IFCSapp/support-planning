@@ -628,12 +628,63 @@ textarea {
   white-space: nowrap;
 }
 
-.hope-summary-items span.expanded {
-  max-width: none;
+.vocab-layout > * {
+  min-width: 0;
+}
+
+.hope-summary-box {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.hope-summary-box .hope-summary-items {
+  display: grid;
+  gap: 0.45rem;
+  min-width: 0;
+  max-width: 100%;
+  margin-top: 0.65rem;
+  overflow: hidden;
+}
+
+.hope-summary-box .hope-summary-items span {
+  position: relative;
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  border: 1px solid #ccfbf1;
   border-radius: 8px;
+  background: #ffffff;
+  padding: 0.35rem 3.2rem 0.35rem 0.55rem;
+  color: #475569;
+  font-size: 0.9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hope-summary-box .hope-summary-items span.expanded {
+  max-width: 100%;
   overflow: visible;
   text-overflow: clip;
-  white-space: pre-wrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.hope-summary-box .hope-summary-items b {
+  margin-right: 0.35rem;
+  color: #0f766e;
+}
+
+.hope-summary-box .hope-toggle {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.35rem;
+  min-height: 1.45rem;
+  padding: 0 0.35rem;
+  font-size: 0.78rem;
 }
 
 .hope-summary-box {
