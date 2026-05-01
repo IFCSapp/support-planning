@@ -668,20 +668,14 @@ function Select<T extends { id: string; label: string }>({
       </div>
       <select value={value ?? ""} onChange={(event) => onChange(event.target.value)}>
         <option value="">選択してください</option>
-        {items.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
+        {items.map((item) => (
+          <option key={item.id} value={item.id}>
+            {item.label}
+          </option>
+        ))}
       </select>
     </div>
   );
-}
-const needsSelection = highlightWhenEmpty && !value;
-return (
-  <label className={needsSelection ? "select-field needs-selection" : "select-field"}>{label}
-    <select value={value ?? ""} onChange={(event) => onChange(event.target.value)}>
-      <option value="">選択してください</option>
-      {items.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
-    </select>
-  </label>
-);
 }
 
 function vocabularyItemMatches(item: { label: string; tags?: string[]; sentence?: string; shortGoal?: string; lead?: string }, keyword: string): boolean {
