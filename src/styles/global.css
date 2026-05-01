@@ -728,6 +728,56 @@ textarea {
   position: static;
 }
 
+.selected-vocabulary-summary {
+  display: grid;
+  gap: 0.45rem;
+  border: 2px solid #93c5fd;
+  border-radius: 8px;
+  background: #eff6ff;
+  padding: 0.75rem;
+}
+
+.selected-vocabulary-summary > strong {
+  color: #1d4ed8;
+  font-weight: 800;
+}
+
+.selected-vocabulary-summary dl {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+}
+
+.selected-vocabulary-summary dl > div {
+  display: grid;
+  grid-template-columns: 5.5rem minmax(0, 1fr);
+  gap: 0.5rem;
+  align-items: start;
+  border-radius: 6px;
+  padding: 0.35rem 0.45rem;
+  background: #ffffff;
+}
+
+.selected-vocabulary-summary dt {
+  color: #64748b;
+  font-weight: 700;
+}
+
+.selected-vocabulary-summary dd {
+  margin: 0;
+  color: #64748b;
+}
+
+.selected-vocabulary-summary .filled {
+  background: #dbeafe;
+}
+
+.selected-vocabulary-summary .filled dt,
+.selected-vocabulary-summary .filled dd {
+  color: #1d4ed8;
+  font-weight: 800;
+}
+
 .print-document {
   background: #ffffff;
   border: 1px solid #e2e8f0;

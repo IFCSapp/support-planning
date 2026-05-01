@@ -466,19 +466,19 @@ function StepVocabularySelect({ dictionary, personHope, blocks, activeBlock, voc
         {query.trim() && (
           <>
             <p className="muted search-result-count">
-             検索結果 {searchResults.length}件
+              検索結果 {searchResults.length}件
             </p>
-         <div className="search-results" aria-label="検索結果">
-            {searchResults.length > 0 ? searchResults.map(({ field, type, item }) => (
-              <button type="button" key={`${field}-${item.id}`} onClick={() => setVocabularySelection(field, item.id, [item])}>
-                <span>{type}</span>
-                <strong>{item.label}</strong>
-                <small>{item.domainIds.map((id) => dictionary.domains.find((domain) => domain.id === id)?.label ?? id).join(" / ")}</small>
-              </button>
-            )) : <p>該当する語彙がありません。</p>}
-              </div>
+            <div className="search-results" aria-label="検索結果">
+              {searchResults.length > 0 ? searchResults.map(({ field, type, item }) => (
+                <button type="button" key={`${field}-${item.id}`} onClick={() => setVocabularySelection(field, item.id, [item])}>
+                  <span>{type}</span>
+                  <strong>{item.label}</strong>
+                  <small>{item.domainIds.map((id) => dictionary.domains.find((domain) => domain.id === id)?.label ?? id).join(" / ")}</small>
+                </button>
+              )) : <p>該当する語彙がありません。</p>}
+            </div>
           </>
-       )}
+        )}
         {vocabularyNewBlockIds.includes(activeBlock.id) && (
           <label>支援領域<select value={activeBlock.domainId} onChange={(event) => setSelection(activeBlock.id, { domainId: event.target.value })}><option value="">選択してください</option>{dictionary.domains.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
         )}
@@ -517,7 +517,12 @@ function StepVocabularySelect({ dictionary, personHope, blocks, activeBlock, voc
         <Select label="行動" value={activeBlock.actionId} items={filtered.actions} onChange={(id) => setVocabularySelection("actionId", id, dictionary.actions)} highlightWhenEmpty />
         <Select label="職員支援" value={activeBlock.staffSupportId} items={filtered.supports} onChange={(id) => setVocabularySelection("staffSupportId", id, dictionary.staffSupports)} highlightWhenEmpty />
       </div>
-      <ConnectedPreview block={activeBlock} updateBlock={updateBlock} onCopied={onCopied} />
+      <ConnectedPreview
+        block={activeBlock}
+        dictionary={dictionary}
+        updateBlock={updateBlock}
+        onCopied={onCopied}
+      />
     </div>
   );
 }
@@ -715,10 +720,45 @@ function keywordTokens(text: string): string[] {
     .filter((token) => token.length >= 2);
 }
 
-function ConnectedPreview({ block, updateBlock, onCopied }: { block: PlanBlock; updateBlock: (id: string, patch: Partial<PlanBlock>) => void; onCopied: () => void }) {
+function ConnectedPreview({
+  block,
+  dictionary,
+  updateBlock,
+  onCopied,
+}: {
+  block: PlanBlock;
+  dictionary: SupportPlanDictionary;
+  updateBlock: (id: string, patch: Partial<PlanBlock>) => void;
+  onCopied: () => void;
+}) {
+  const selectedDirection = dictionary.directions.find((item) => item.id === block.directionId);
+  const selectedSituation = dictionary.situations.find((item) => item.id === block.situationId);
+  const selectedAction = dictionary.actions.find((item) => item.id === block.actionId);
+  const selectedSupport = dictionary.staffSupports.find((item) => item.id === block.staffSupportId);
   return (
     <section className="preview-panel">
       <h2>文章プレビュー</h2>
+            <div className="selected-vocabulary-summary" aria-label="選択済み語彙">
+        <strong>選択済み</strong>
+        <dl>
+          <div className={selectedDirection ? "filled" : ""}>
+            <dt>方向性</dt>
+            <dd>{selectedDirection?.label ?? "未選択"}</dd>
+          </div>
+          <div className={selectedSituation ? "filled" : ""}>
+            <dt>場面</dt>
+            <dd>{selectedSituation?.label ?? "未選択"}</dd>
+          </div>
+          <div className={selectedAction ? "filled" : ""}>
+            <dt>行動</dt>
+            <dd>{selectedAction?.label ?? "未選択"}</dd>
+          </div>
+          <div className={selectedSupport ? "filled" : ""}>
+            <dt>職員支援</dt>
+            <dd>{selectedSupport?.label ?? "未選択"}</dd>
+          </div>
+        </dl>
+      </div>
       <div className="connected-preview">
         <p>{block.directionText || "方向性を選ぶと文が入ります。"}</p>
         <p>{block.actionText || "場面と行動を選ぶと文が入ります。"}</p>
