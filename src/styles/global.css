@@ -685,10 +685,30 @@ textarea {
   font-size: 0.9rem;
 }
 
-.selection-clear-row {
-  display: flex;
-  justify-content: flex-end;
-  margin: 0.25rem 0 0.5rem;
+.vocabulary-control-row {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto;
+  gap: 0.75rem;
+  align-items: end;
+}
+
+.vocabulary-domain-select {
+  min-width: 0;
+}
+
+.vocabulary-clear-all {
+  align-self: end;
+  white-space: nowrap;
+}
+
+@media (max-width: 780px) {
+  .vocabulary-control-row {
+    grid-template-columns: 1fr;
+  }
+
+  .vocabulary-clear-all {
+    width: 100%;
+  }
 }
 
 .select-field {

@@ -512,9 +512,6 @@ function StepVocabularySelect({ dictionary, personHope, blocks, activeBlock, voc
             </div>
           </>
         )}
-        {vocabularyNewBlockIds.includes(activeBlock.id) && (
-          <label>支援領域<select value={activeBlock.domainId} onChange={(event) => setSelection(activeBlock.id, { domainId: event.target.value })}><option value="">選択してください</option>{dictionary.domains.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
-        )}
 
         <details className="idea-box" open>
           <summary>支援アイデアの材料を選ぶ</summary>
@@ -545,10 +542,25 @@ function StepVocabularySelect({ dictionary, personHope, blocks, activeBlock, voc
           />
         </details>
 
-        <div className="selection-clear-row">
+        <div className="vocabulary-control-row">
+          <label className="vocabulary-domain-select">
+            支援領域
+            <select
+              value={activeBlock.domainId}
+              onChange={(event) => setSelection(activeBlock.id, { domainId: event.target.value })}
+            >
+              <option value="">選択してください</option>
+              {dictionary.domains.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
           <button
             type="button"
-            className="danger"
+            className="danger vocabulary-clear-all"
             onClick={() => {
               if (!confirm("このブロックの選択済み項目をすべてクリアしますか？")) return;
               clearAllVocabularySelections();
