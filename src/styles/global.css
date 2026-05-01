@@ -1440,7 +1440,7 @@ textarea {
     font-size: 0.86rem;
   }
 
-  select {
+ select {
     appearance: auto;
     -webkit-appearance: menulist;
     background: #ffffff;
@@ -1449,20 +1449,6 @@ textarea {
   .select-field,
   .select-field.needs-selection {
     overflow: visible;
-  }
-
-  select:focus,
-  select:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 2px rgba(153, 246, 228, 0.35);
-  }
-
-  .select-field:focus-within {
-    background: transparent;
-  }
-
-  .select-field.needs-selection:focus-within {
-    background: #fffbeb;
   }
 
 }
