@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ActNoticeEntry, GenerationRule, StaffSupportEntry, SupportPlanDictionary, TriggerEntry } from "../types/dictionary";
 import type { InterviewPurpose, PersonHope, PlanBlock, SupportPlanDraft } from "../types/plan";
 import { generateActionText, generateDirectionText, generateStaffSupportText } from "../logic/generateTexts";
@@ -76,6 +76,19 @@ export default function PlanWizard({ dictionary, editId, onNavigate, onCopied, o
   }, [dirty, draft]);
 
   const activeBlock = draft.blocks.find((block) => block.id === activeBlockId) ?? draft.blocks[0];
+
+  const complete = useCallback(async () => {
+    const completed = {
+      ...draft,
+      status: "completed" as const,
+      updatedAt: new Date().toISOString(),
+    };
+
+    await savePlan(completed);
+    setDirty(false);
+    setSaveState("保存済み");
+    onNavigate(`/plans/${completed.id}`);
+  }, [draft, onNavigate]);
 
   useEffect(() => {
     onHeaderChange?.({
@@ -172,14 +185,6 @@ export default function PlanWizard({ dictionary, editId, onNavigate, onCopied, o
     setActiveBlockId(block.id);
   }
 
-  async function complete() {
-    const completed = { ...draft, status: "completed" as const, updatedAt: new Date().toISOString() };
-    await savePlan(completed);
-    setDirty(false);
-    setSaveState("保存済み");
-    onNavigate(`/plans/${completed.id}`);
-  }
-
   return (
     <section className="page wizard-page">
       <div className="button-row no-print">
@@ -209,7 +214,7 @@ export default function PlanWizard({ dictionary, editId, onNavigate, onCopied, o
       )}
       {step === 3 && <ConfirmStep blocks={draft.blocks} onCopied={onCopied} />}
       {step === 4 && <OutputStep draft={draft} complete={complete} onCopied={onCopied} />}
-      
+
     </section>
   );
 }
@@ -524,7 +529,21 @@ function StepVocabularySelect({ dictionary, personHope, blocks, activeBlock, voc
             支援領域
             <select
               value={activeBlock.domainId}
-              onChange={(event) => setSelection(activeBlock.id, { domainId: event.target.value })}
+              onChange={(event) => {
+                setSelection(activeBlock.id, {
+                  domainId: event.target.value,
+                  directionId: undefined,
+                  situationId: undefined,
+                  actionId: undefined,
+                  staffSupportId: undefined,
+                  monitoringId: undefined,
+                  directionText: "",
+                  actionText: "",
+                  staffSupportText: "",
+                  monitoringText: "",
+                  shortGoal: "",
+                });
+              }}
             >
               <option value="">選択してください</option>
               {dictionary.domains.map((item) => (
@@ -841,10 +860,6 @@ function ConnectedPreview({
   updateBlock: (id: string, patch: Partial<PlanBlock>) => void;
   onCopied: () => void;
 }) {
-  const selectedDirection = dictionary.directions.find((item) => item.id === block.directionId);
-  const selectedSituation = dictionary.situations.find((item) => item.id === block.situationId);
-  const selectedAction = dictionary.actions.find((item) => item.id === block.actionId);
-  const selectedSupport = dictionary.staffSupports.find((item) => item.id === block.staffSupportId);
   return (
     <section className="preview-panel">
       <div className="button-row vocab-block-row preview-vocab-block-row">
@@ -875,27 +890,6 @@ function ConnectedPreview({
         </button>
       </div>
       <h2>文章プレビュー</h2>
-      <div className="selected-vocabulary-summary" aria-label="選択済み語彙">
-        <strong>選択済み</strong>
-        <dl>
-          <div className={selectedDirection ? "filled" : ""}>
-            <dt>方向性</dt>
-            <dd>{selectedDirection?.label ?? "未選択"}</dd>
-          </div>
-          <div className={selectedSituation ? "filled" : ""}>
-            <dt>場面</dt>
-            <dd>{selectedSituation?.label ?? "未選択"}</dd>
-          </div>
-          <div className={selectedAction ? "filled" : ""}>
-            <dt>行動</dt>
-            <dd>{selectedAction?.label ?? "未選択"}</dd>
-          </div>
-          <div className={selectedSupport ? "filled" : ""}>
-            <dt>職員支援</dt>
-            <dd>{selectedSupport?.label ?? "未選択"}</dd>
-          </div>
-        </dl>
-      </div>
       <div className="connected-preview">
         <p>{block.directionText || "方向性を選ぶと文が入ります。"}</p>
         <p>{block.actionText || "場面と行動を選ぶと文が入ります。"}</p>

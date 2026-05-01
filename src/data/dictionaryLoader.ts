@@ -24,7 +24,8 @@ function domainIds(entry: RawRecord, fallback: string): string[] {
 }
 
 export async function loadDictionary(): Promise<SupportPlanDictionary> {
-  const response = await fetch("/data/support_plan_dictionary_v0_2_1.json", { cache: "no-cache" });
+  const dictionaryUrl = `${import.meta.env.BASE_URL}data/support_plan_dictionary_v0_2_1.json`;
+  const response = await fetch(dictionaryUrl, { cache: "no-cache" });
   if (!response.ok) {
     throw new Error("辞書データを読み込めませんでした。dataフォルダに辞書JSONが配置されているか確認してください。");
   }
@@ -142,11 +143,11 @@ function normalizeTriggers(raw: RawRecord): TriggerEntry[] {
 }
 
 function normalizeActNotices(raw: RawRecord): ActNoticeEntry[] {
-    return uniqueById([...asArray<RawRecord>(raw.notices), ...asArray<RawRecord>(raw.actNotices)]).map((entry) => ({
-        id: asString(entry.id),
-        category: asString(entry.category),
-        label: asString(entry.label || entry.text),
-    }));
+  return uniqueById([...asArray<RawRecord>(raw.notices), ...asArray<RawRecord>(raw.actNotices)]).map((entry) => ({
+    id: asString(entry.id),
+    category: asString(entry.category),
+    label: asString(entry.label || entry.text),
+  }));
 }
 
 function normalizeAvoidPhrases(raw: RawRecord): AvoidPhraseEntry[] {
