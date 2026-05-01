@@ -484,17 +484,6 @@ function StepVocabularySelect({ dictionary, personHope, blocks, activeBlock, voc
     <div className="vocab-layout">
       <div className="panel vocab-panel">
         <HopeSummary hope={personHope} />
-        <div className="button-row vocab-block-row">
-          {blocks.map((block, index) => (
-            <span key={block.id} className={block.id === activeBlock.id ? "vocab-block-chip selected" : "vocab-block-chip"}>
-              <button type="button" className="vocab-block-main" onClick={() => setActiveBlockId(block.id)}>
-                {index + 1}. {dictionary.domains.find((item) => item.id === block.domainId)?.label ?? "支援領域未選択"}
-              </button>
-              <button type="button" className="vocab-block-delete" aria-label="ブロックを削除" onClick={() => removeBlock(block.id)}>×</button>
-            </span>
-          ))}
-          <button type="button" className="chip add-block" onClick={addVocabularyBlock}>＋</button>
-        </div>
         <label>検索<input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="すべての領域から検索" /></label>
         {query.trim() && (
           <>
@@ -608,7 +597,11 @@ function StepVocabularySelect({ dictionary, personHope, blocks, activeBlock, voc
       </div>
       <ConnectedPreview
         block={activeBlock}
+        blocks={blocks}
         dictionary={dictionary}
+        setActiveBlockId={setActiveBlockId}
+        addVocabularyBlock={addVocabularyBlock}
+        removeBlock={removeBlock}
         updateBlock={updateBlock}
         onCopied={onCopied}
       />
@@ -843,12 +836,20 @@ function keywordTokens(text: string): string[] {
 
 function ConnectedPreview({
   block,
+  blocks,
   dictionary,
+  setActiveBlockId,
+  addVocabularyBlock,
+  removeBlock,
   updateBlock,
   onCopied,
 }: {
   block: PlanBlock;
+  blocks: PlanBlock[];
   dictionary: SupportPlanDictionary;
+  setActiveBlockId: (id: string) => void;
+  addVocabularyBlock: () => void;
+  removeBlock: (id: string) => void;
   updateBlock: (id: string, patch: Partial<PlanBlock>) => void;
   onCopied: () => void;
 }) {
@@ -856,14 +857,35 @@ function ConnectedPreview({
   const selectedSituation = dictionary.situations.find((item) => item.id === block.situationId);
   const selectedAction = dictionary.actions.find((item) => item.id === block.actionId);
   const selectedSupport = dictionary.staffSupports.find((item) => item.id === block.staffSupportId);
-  const selectedDomain = dictionary.domains.find((item) => item.id === block.domainId);
   return (
     <section className="preview-panel">
-      <section className={selectedDomain ? "selected-domain-preview filled" : "selected-domain-preview"}>
-        <span>選択済み支援領域</span>
-        <strong>{selectedDomain?.label ?? "未選択"}</strong>
-        {selectedDomain?.description && <p>{selectedDomain.description}</p>}
-      </section>
+      <div className="button-row vocab-block-row preview-vocab-block-row">
+        {blocks.map((item, index) => (
+          <span
+            key={item.id}
+            className={item.id === block.id ? "vocab-block-chip selected" : "vocab-block-chip"}
+          >
+            <button
+              type="button"
+              className="vocab-block-main"
+              onClick={() => setActiveBlockId(item.id)}
+            >
+              {index + 1}. {dictionary.domains.find((domain) => domain.id === item.domainId)?.label ?? "支援領域未選択"}
+            </button>
+            <button
+              type="button"
+              className="vocab-block-delete"
+              aria-label="ブロックを削除"
+              onClick={() => removeBlock(item.id)}
+            >
+              ×
+            </button>
+          </span>
+        ))}
+        <button type="button" className="chip add-block" onClick={addVocabularyBlock}>
+          ＋
+        </button>
+      </div>
       <h2>文章プレビュー</h2>
       <div className="selected-vocabulary-summary" aria-label="選択済み語彙">
         <strong>選択済み</strong>
