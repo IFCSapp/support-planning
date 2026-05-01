@@ -620,27 +620,33 @@ textarea {
 }
 
 .search-results {
-  display: grid;
-  gap: 0.35rem;
-  max-height: 280px;
-  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  max-height: 360px;
+  overflow-y: auto;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   background: #ffffff;
-  padding: 0.45rem;
+  padding: 0.5rem;
 }
 
 .search-results button {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 0.2rem;
-  min-height: 0;
+  gap: 0.25rem;
+  min-height: auto;
+  height: auto;
   text-align: left;
-  padding: 0.55rem 0.65rem;
+  padding: 0.65rem 0.75rem;
+  align-items: start;
+  overflow: visible;
 }
 
 .search-results span {
   justify-self: start;
+  width: fit-content;
+  max-width: 100%;
   border: 1px solid #99f6e4;
   border-radius: 999px;
   background: #f0fdfa;
@@ -648,23 +654,35 @@ textarea {
   padding: 0.08rem 0.45rem;
   font-size: 0.78rem;
   font-weight: 700;
+  line-height: 1.3;
 }
 
 .search-results strong,
 .search-results small {
+  display: block;
   overflow: visible;
   text-overflow: clip;
   white-space: normal;
-  line-height: 1.35;
+  line-height: 1.45;
+}
+
+.search-results strong {
+  font-size: 0.95rem;
 }
 
 .search-results small {
   color: #64748b;
+  font-size: 0.82rem;
 }
 
 .search-results p {
   margin: 0;
   color: #64748b;
+}
+
+.search-result-count {
+  margin: 0;
+  font-size: 0.9rem;
 }
 
 .select-field {

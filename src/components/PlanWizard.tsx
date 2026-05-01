@@ -464,7 +464,11 @@ function StepVocabularySelect({ dictionary, personHope, blocks, activeBlock, voc
         </div>
         <label>検索<input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="すべての領域から検索" /></label>
         {query.trim() && (
-          <div className="search-results" aria-label="検索結果">
+          <>
+            <p className="muted search-result-count">
+             検索結果 {searchResults.length}件
+            </p>
+         <div className="search-results" aria-label="検索結果">
             {searchResults.length > 0 ? searchResults.map(({ field, type, item }) => (
               <button type="button" key={`${field}-${item.id}`} onClick={() => setVocabularySelection(field, item.id, [item])}>
                 <span>{type}</span>
@@ -472,8 +476,9 @@ function StepVocabularySelect({ dictionary, personHope, blocks, activeBlock, voc
                 <small>{item.domainIds.map((id) => dictionary.domains.find((domain) => domain.id === id)?.label ?? id).join(" / ")}</small>
               </button>
             )) : <p>該当する語彙がありません。</p>}
-          </div>
-        )}
+              </div>
+          </>
+       )}
         {vocabularyNewBlockIds.includes(activeBlock.id) && (
           <label>支援領域<select value={activeBlock.domainId} onChange={(event) => setSelection(activeBlock.id, { domainId: event.target.value })}><option value="">選択してください</option>{dictionary.domains.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
         )}
